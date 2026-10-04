@@ -40,5 +40,5 @@ ffmpeg -v error -y -i "$SRC/harbor sfx soundtrack.mp3" -filter_complex \
   -c:a aac -b:a 128k -movflags +faststart "$OUT/harbour-ambience.m4a"
 
 # soundtrack: already trimmed to the lyric timeline; AAC is smaller than the 320k MP3
-ffmpeg -v error -y -i "$SRC/official soundtrack.mp3" -af "volume=0.8" -c:a aac -b:a 192k -movflags +faststart "$OUT/soundtrack.m4a"
+ffmpeg -v error -y -i "$SRC/official soundtrack.mp3" -af "volume=0.64" -c:a aac -b:a 192k -movflags +faststart "$OUT/soundtrack.m4a"
 ls -la "$OUT"
