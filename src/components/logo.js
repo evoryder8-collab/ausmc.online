@@ -1,3 +1,4 @@
+import { gsap } from 'gsap';
 import data from '../data/logo-layers.json';
 
 const BASE = import.meta.env.BASE_URL;
@@ -90,6 +91,8 @@ export function buildLogo() {
   const rim = disc('logo__rim');
   const gleam = disc('logo__gleam');
   gleam.innerHTML = '<span></span>';
+  // start parked off to the left; only xPercent ever moves it
+  gsap.set(gleam.firstElementChild, { x: 0, xPercent: -160 });
 
   const ready = Promise.all(imgs.map((i) => (i.decode ? i.decode().catch(() => {}) : Promise.resolve())));
 

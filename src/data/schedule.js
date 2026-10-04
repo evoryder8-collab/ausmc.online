@@ -131,12 +131,6 @@ export const DAYS = [
           { start: '18:00', end: '23:00', title: 'Championship Dinner Party', desc: 'Cheers Sports Bar & Grill', address: '561 George St, Sydney NSW 2000', location: 'dinner', kind: 'dinner', openEnded: true },
         ],
       },
-      {
-        type: 'feature',
-        title: 'Afterparty & Official Aftermovie',
-        body: 'After the awards ceremony, all participants, judges, and guests will gather for a special afterparty moment, where the official AusMC aftermovie will premiere on the big screen at the venue. Filmed during the championship and created by award-winning filmmaker Constantin Barbu @1iconstantine, the aftermovie will capture the energy, emotions, talent, and atmosphere of the event, bringing everyone together to see themselves as part of the official story. It will be a powerful way to celebrate everyone who makes the championship special and show the world why more therapists should join future editions.',
-        credit: { name: 'Constantin Barbu', handle: '1iconstantine', url: 'https://www.instagram.com/1iconstantine/' },
-      },
     ],
   },
 ];

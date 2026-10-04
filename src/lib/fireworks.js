@@ -64,10 +64,37 @@ export class Fireworks {
     return this.visible && !document.hidden;
   }
 
-  start() {
+  /**
+   * `welcome`: a short, intense opening wave (~4s) with exactly one star and
+   * one heart that blooms right behind the badge (`heartAround`), framing it.
+   * Then the normal show takes over.
+   */
+  start({ welcome = false, heartAround = null } = {}) {
     this.auto = !this.reduced;
-    this.nextAuto = performance.now() + 600;
+    const now = performance.now();
+    this.nextAuto = now + (welcome ? 4300 : 600);
     this.kick();
+    if (!welcome) return;
+    const mixed = () => pick(['peony', 'ring', 'chrys', 'crackle', 'willow']);
+    const at = (ms, fn) => setTimeout(fn, ms);
+    at(0, () => this.volley(3, { typeFn: mixed, size: 1.05 }));
+    at(750, () => this.volley(2, { typeFn: mixed, size: 1.1 }));
+    if (heartAround) this.heartAround(heartAround, now + 1650);
+    at(1900, () => this.launch({ type: 'star', size: 1.2, x: this.W * (Math.random() < 0.5 ? 0.24 : 0.76), y: this.H * 0.2 }));
+    at(2400, () => this.volley(3, { typeFn: mixed, size: 1.1 }));
+    at(3200, () => this.volley(2, { typeFn: mixed }));
+  }
+
+  /** a heart burst sized and centred so `el` (the badge) sits inside it */
+  heartAround(el, burstAt) {
+    const m = this.c.parentElement.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    if (!r.width) return;
+    // the heart's largest inscribed circle: radius 0.494, centred 0.2 below the burst point
+    const R = (r.width * 0.47 * 1.14) / 0.494;
+    const cx = r.left - m.left + r.width / 2;
+    const cy = r.top - m.top + r.height / 2;
+    this.launch({ x: cx, y: cy - R * 0.2, type: 'heart', size: 1.3, radius: R, burstAt, ifLate: 'launch', palette: ['255,45,85', '255,255,255', '255,130,160'] });
   }
 
   kick() {
@@ -86,7 +113,7 @@ export class Fireworks {
    * Launch a shell. `burstAt` (performance.now() ms) lands the explosion on
    * that instant by delaying the launch by exactly the flight time.
    */
-  launch({ x, y, type, palette, size = 1, burstAt, sfx = true } = {}) {
+  launch({ x, y, type, palette, size = 1, burstAt, sfx = true, radius, ifLate = 'burst' } = {}) {
     if (!this.active) return;
     const W = this.W;
     const H = this.H;
@@ -108,6 +135,7 @@ export class Fireworks {
         palette: palette || pick(PALETTES),
         size,
         sfx,
+        radius,
         trail: [],
       });
       if (sfx) this.sound?.fwLaunch({ dur: T, pan: (tx / W) * 2 - 1, gain: 0.026 + 0.012 * size });
@@ -116,17 +144,21 @@ export class Fireworks {
     if (burstAt) {
       const wait = burstAt - T * 1000 - performance.now();
       if (wait > 0) setTimeout(go, wait);
-      else this.burst({ x: tx, y: ty, type: type || 'peony', palette: palette || pick(PALETTES), size, sfx });
+      else if (ifLate === 'launch') go(); // keep the climb; it blooms when it arrives
+      else this.burst({ x: tx, y: ty, type: type || 'peony', palette: palette || pick(PALETTES), size, sfx, radius });
     } else go();
   }
 
-  volley(n = 4, opts = {}) {
-    for (let i = 0; i < n; i++) setTimeout(() => this.launch({ ...opts, x: this.W * (0.15 + (0.7 * (i + 0.5)) / n) + rand(-40, 40) }), i * rand(110, 220));
+  volley(n = 4, { typeFn, ...opts } = {}) {
+    for (let i = 0; i < n; i++) {
+      setTimeout(() => this.launch({ ...opts, type: typeFn ? typeFn() : opts.type, x: this.W * (0.15 + (0.7 * (i + 0.5)) / n) + rand(-40, 40) }), i * rand(110, 220));
+    }
   }
 
-  burst({ x, y, type = 'peony', palette = pick(PALETTES), size = 1, sfx = true }) {
+  burst({ x, y, type = 'peony', palette = pick(PALETTES), size = 1, sfx = true, radius }) {
     const s = Math.min(this.W, this.H * 1.4) / 900;
-    const speed = rand(170, 260) * s * (0.8 + 0.35 * size);
+    // with drag k = 1.6 a spark covers ~83% of v/k by 1.1s: aim the shape at `radius` then
+    const speed = radius ? (radius * 1.6) / 0.83 / 1.05 : rand(170, 260) * s * (0.8 + 0.35 * size);
     const col = () => pick(palette);
     const add = (vx, vy, o = {}) => this.sparks.push({ x, y, vx, vy, life: o.life ?? rand(1.1, 1.8), max: o.life ?? 1.6, color: o.color || col(), size: o.size ?? rand(1.2, 2.2), drag: o.drag ?? 1.25, g: o.g ?? 90, trail: [], twinkle: o.twinkle || false, tail: o.tail ?? 5 });
     const N = Math.round((type === 'willow' ? 70 : 110) * (0.7 + 0.4 * size));
@@ -156,13 +188,13 @@ export class Fireworks {
           pts.push([(16 * Math.pow(Math.sin(a), 3)) / 17, -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a)) / 17]);
         }
       }
-      const per = Math.ceil(N / (pts.length - 1));
+      const per = Math.ceil((radius ? Math.max(N, radius * 1.1) : N) / (pts.length - 1));
       for (let k = 0; k < pts.length - 1; k++) {
         for (let j = 0; j < per; j++) {
           const f = j / per;
           const px = pts[k][0] + (pts[k + 1][0] - pts[k][0]) * f;
           const py = pts[k][1] + (pts[k + 1][1] - pts[k][1]) * f;
-          add(px * speed * 1.05, py * speed * 1.05, { drag: 1.6, g: 50, life: rand(1.3, 1.7), color: type === 'heart' ? pick(['255,45,85', '255,120,150', '255,255,255']) : col() });
+          add(px * speed * 1.05, py * speed * 1.05, { drag: 1.6, g: radius ? 14 : 50, life: radius ? rand(1.9, 2.3) : rand(1.3, 1.7), color: type === 'heart' ? pick(['255,45,85', '255,120,150', '255,255,255']) : col() });
         }
       }
     } else {
@@ -234,7 +266,7 @@ export class Fireworks {
       ctx.globalAlpha = 0.9;
       ctx.drawImage(this.sprite, s.x - 6, s.y - 6, 12, 12);
       if (s.t >= s.T) {
-        this.burst({ x: s.x, y: s.y, type: s.type, palette: s.palette, size: s.size, sfx: s.sfx });
+        this.burst({ x: s.x, y: s.y, type: s.type, palette: s.palette, size: s.size, sfx: s.sfx, radius: s.radius });
         return false;
       }
       return true;

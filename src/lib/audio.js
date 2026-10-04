@@ -620,6 +620,46 @@ class SoundEngine {
     o.stop(t + 0.15);
   }
 
+  // ───────────────────────── harbour ambience ─────────────────────────
+  // Decoded ahead of time (no context needed) so it can start the instant the
+  // visitor taps "Yes", then loops sample-accurately through Web Audio.
+
+  preloadHarbour(url) {
+    if (this.harbourBuf) return this.harbourBuf;
+    this.harbourBuf = fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((ab) => new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 48000).decodeAudioData(ab))
+      .catch(() => null);
+    return this.harbourBuf;
+  }
+
+  async startHarbour({ level = 1, fade = 1.4 } = {}) {
+    const ctx = this.ensure();
+    if (!ctx || this.harbour) return;
+    this.harbour = { pending: true };
+    const buf = await this.harbourBuf;
+    if (!buf) return;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(level, ctx.currentTime + fade);
+    src.connect(g).connect(this.dry);
+    src.start();
+    this.harbour = { src, g };
+  }
+
+  /** settle the harbour to a soft bed (e.g. under the soundtrack) */
+  harbourLevel(level, seconds = 2) {
+    const h = this.harbour;
+    if (!h?.g) return;
+    const t = this.ctx.currentTime;
+    h.g.gain.cancelScheduledValues(t);
+    h.g.gain.setValueAtTime(h.g.gain.value, t);
+    h.g.gain.linearRampToValueAtTime(level, t + seconds);
+  }
+
   // ───────────────────────── ambient bed ─────────────────────────
 
   startAmbient() {

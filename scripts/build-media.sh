@@ -22,13 +22,22 @@ loop() { # in out_basename D X fps crf1080 crf720
 loop "$SRC/sydney-at-night-for header.mov" skyline 12.8 3.2 30
 loop "$SRC/aerial-video-of-sydney-city-and-sydney-harbor- for footer.mov" harbour 21.0 4.0 30 30 30
 
+# the arrival, trimmed 4s shorter than the source (14.85s → 10.85s) with a soft
+# fade to dark at the new end
+PLANE_T=10.85
 for spec in "1920:1080:22" "1280:720:23"; do
   IFS=: read -r w h crf <<<"$spec"
-  ffmpeg -v error -y -i "$SRC/airplane flyby.mp4" -map 0:v:0 -map 0:a:0 \
-    -vf "scale=$w:$h:flags=lanczos,format=yuv420p" -c:v libx264 -preset slow -crf "$crf" -profile:v high -pix_fmt yuv420p \
-    -c:a aac -b:a 160k -ar 48000 -movflags +faststart "$OUT/plane-$h.mp4"
+  ffmpeg -v error -y -i "$SRC/airplane flyby.mp4" -t $PLANE_T -map 0:v:0 -map 0:a:0 \
+    -vf "scale=$w:$h:flags=lanczos,format=yuv420p,fade=t=out:st=9.65:d=1.2" -c:v libx264 -preset slow -crf "$crf" -profile:v high -pix_fmt yuv420p \
+    -af "afade=t=out:st=9.65:d=1.2" -c:a aac -b:a 160k -ar 48000 -movflags +faststart "$OUT/plane-$h.mp4"
 done
 ffmpeg -v error -y -i "$OUT/plane-720.mp4" -frames:v 1 -q:v 4 "$OUT/plane-poster.jpg"
+
+# harbour ambience: a seamless loop from the full-level middle (3s–45s) with a
+# 4s crossfade of the tail into the head (output 38s)
+ffmpeg -v error -y -i "$SRC/harbor sfx soundtrack.mp3" -filter_complex \
+  "[0:a]atrim=start=7:end=45,asetpts=PTS-STARTPTS[m];[0:a]atrim=start=3:end=7,asetpts=PTS-STARTPTS[h];[m][h]acrossfade=d=4:c1=qsin:c2=qsin" \
+  -c:a aac -b:a 128k -movflags +faststart "$OUT/harbour-ambience.m4a"
 
 # soundtrack: already trimmed to the lyric timeline; AAC is smaller than the 320k MP3
 ffmpeg -v error -y -i "$SRC/official soundtrack.mp3" -c:a aac -b:a 192k -movflags +faststart "$OUT/soundtrack.m4a"

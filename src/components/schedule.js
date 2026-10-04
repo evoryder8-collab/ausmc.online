@@ -99,31 +99,11 @@ function renderProgram(day, block, bi) {
   </article>`;
 }
 
-function renderFeature(day, block) {
-  return `
-  <article class="block block--feature" data-key="${day.id}-feature">
-    <div class="feature__screen" aria-hidden="true">
-      <div class="feature__beam"></div>
-      <div class="feature__play">${icon('play')}</div>
-      <div class="feature__bars"><span></span><span></span></div>
-    </div>
-    <div class="feature__copy glass">
-      <p class="feature__kicker">${icon('film')} Premiere · After the Awards Ceremony</p>
-      <h3 class="feature__title">${esc(block.title)}</h3>
-      <p class="feature__body">${esc(block.body).replace('@1iconstantine', `<a href="${block.credit.url}" target="_blank" rel="noopener">@${block.credit.handle}</a>`)}</p>
-      <a class="credit glass" href="${block.credit.url}" target="_blank" rel="noopener">
-        ${icon('instagram')}<span><small>Aftermovie by</small>${esc(block.credit.name)}</span>
-      </a>
-    </div>
-  </article>`;
-}
-
 function renderDay(day) {
   const blocks = day.blocks.map((b, bi) => {
     if (b.type === 'masterclass') return renderMasterclass(day, b, bi);
     if (b.type === 'online') return renderOnline(day, b, bi);
     if (b.type === 'program') return renderProgram(day, b, bi);
-    if (b.type === 'feature') return renderFeature(day, b);
     return '';
   });
   return `
@@ -282,7 +262,6 @@ function setupLanding({ reduced }) {
 
   let tickIndex = 0;
   document.querySelectorAll('.block').forEach((block) => {
-    const isFeature = block.classList.contains('block--feature');
     const head = block.querySelectorAll('.block__head, .cols-head');
     const rows = block.querySelectorAll('.row');
     const rail = block.querySelector('.timeline__rail');
@@ -290,23 +269,6 @@ function setupLanding({ reduced }) {
     if (reduced) {
       gsap.set(block, { opacity: 0 });
       ScrollTrigger.create({ trigger: block, start: 'top 90%', once: true, onEnter: () => gsap.to(block, { opacity: 1, duration: 0.6 }) });
-      return;
-    }
-
-    if (isFeature) {
-      const screen = block.querySelector('.feature__screen');
-      const copy = block.querySelector('.feature__copy');
-      gsap.set(screen, { clipPath: 'inset(48% 0% 48% 0% round 28px)' });
-      gsap.set(copy, { opacity: 0, y: 60 });
-      ScrollTrigger.create({
-        trigger: block, start: 'top 80%', once: true,
-        onEnter: () => {
-          gsap.to(screen, { clipPath: 'inset(0% 0% 0% 0% round 28px)', duration: 1.4, ease: 'expo.inOut' });
-          gsap.to(copy, { opacity: 1, y: 0, duration: 1.2, delay: 0.5, ease: spring({ bounce: 0.25 }) });
-          sound.whoosh({ dur: 1.1, f0: 140, f1: 900, gain: 0.12, pan0: 0, pan1: 0 });
-          sound.chime(69, { delay: 0.6, gain: 0.08, dur: 2.5 });
-        },
-      });
       return;
     }
 

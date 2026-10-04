@@ -112,7 +112,10 @@ const lyrics = createLyrics(document.querySelector('.lyrics'), { onCue: syncFire
 const song = createSong({ onStart: () => lyrics.play(), onPause: () => lyrics.pause() });
 lyrics.attach(song.audio);
 let revealed = false;
-if (import.meta.env.DEV) Object.assign(window.__ausmc, { song, film, fireworks, lyrics });
+if (import.meta.env.DEV) {
+  Object.assign(window.__ausmc, { song, film, fireworks, lyrics });
+  window.__harbourProbe = () => ({ running: !!sound.harbour?.src, gain: sound.harbour?.g ? +sound.harbour.g.gain.value.toFixed(3) : null, ctx: sound.ctx?.state, songPlaying: !song.audio.paused, songT: +song.audio.currentTime.toFixed(2) });
+}
 
 /** land the big shells exactly on the song's emphasis beats */
 function syncFireworks(m, ms) {
@@ -134,8 +137,12 @@ function syncFireworks(m, ms) {
   }
 }
 
+sound.preloadHarbour(`${import.meta.env.BASE_URL}media/harbour-ambience.m4a`);
+const HARBOUR_BED = 0.32; // level under the soundtrack
+
 const tapSound = document.querySelector('.tap-sound');
 async function startSong() {
+  sound.harbourLevel(HARBOUR_BED, 2.5); // the harbour settles beneath the soundtrack
   if (await song.start()) return;
   // a browser refused autoplay: offer a single tap to start the soundtrack
   tapSound.hidden = false;
@@ -188,7 +195,9 @@ toggle.addEventListener('click', () => {
   sound.setEnabled(on);
   if (on) {
     sound.chime(81, { gain: 0.06, dur: 1.2 });
+    sound.startHarbour({ level: revealed ? HARBOUR_BED : 1, fade: 1.5 });
     if (revealed) (song.started ? song.resume() : startSong());
+    else if (song.started) song.resume();
   } else {
     song.pause();
   }
@@ -217,6 +226,7 @@ async function begin(withSound, btn) {
   begun = true;
   // everything that must play with sound later is unlocked inside this tap (iOS)
   sound.setEnabled(withSound);
+  if (withSound) sound.startHarbour({ level: 1, fade: 1.2 }); // Sydney harbour from the first tap
   film.prime(withSound);
   if (withSound) song.prime();
   syncToggle();
@@ -240,8 +250,11 @@ async function begin(withSound, btn) {
 }
 
 // ───────────── 2b · through the badge, into the sky: the arrival ─────────────
-const SONG_AT = 0.2; // the soundtrack enters 20% into the plane footage
-const SKIP_AFTER = 10; // seconds into the footage before "Skip intro" appears
+// The soundtrack enters 2.97s into the arrival: 20% of the original 14.85s
+// footage. The footage is now trimmed 4s at its end, so the entry point stays
+// on the same moment of the jet pass.
+const SONG_AT_SEC = 2.97;
+const SKIP_AFTER = 7.2; // seconds into the footage before "Skip intro" appears
 
 async function playFilm(withSound) {
   const filmEl = intro.querySelector('.intro__film');
@@ -264,7 +277,7 @@ async function playFilm(withSound) {
   let skipShown = false;
   const check = () => {
     const d = v.duration;
-    if (d && !songIn && v.currentTime >= d * SONG_AT) {
+    if (d && !songIn && v.currentTime >= Math.min(SONG_AT_SEC, d * 0.5)) {
       songIn = true;
       if (sound.enabled) {
         lyrics.setCinema(true); // the opening lines play over the arrival
@@ -292,7 +305,7 @@ async function playFilm(withSound) {
   tl.call(() => film.play(withSound), null, 0.35);
   tl.fromTo(filmEl, { opacity: 0, scale: 1.14 }, { opacity: 1, scale: 1, duration: 1.4, ease: 'power3.out' }, 0.3);
   tl.fromTo(dest.children, { opacity: 0, y: 24, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.4, stagger: 0.18, ease: 'expo.out' }, 0.35 + 4.4);
-  tl.to(dest, { opacity: 0, y: -14, filter: 'blur(8px)', duration: 1.2, ease: 'power2.in' }, 0.35 + 10.2);
+  tl.to(dest, { opacity: 0, y: -14, filter: 'blur(8px)', duration: 1.1, ease: 'power2.in' }, 0.35 + 8.2);
 
   // safety net if the video never reports "ended"
   const guard = setTimeout(() => finish('timeout'), ((v.duration || 15) + 4) * 1000);
@@ -328,10 +341,7 @@ async function revealPage() {
   tl.to(bg, { level: 1, pulse: 0, duration: 1.6 }, 0);
   tl.to(stars, { level: 1, duration: 1.6 }, 0);
   tl.call(() => hero.reveal(), null, 0.45);
-  tl.call(() => {
-    fireworks.start();
-    if (!reduced) fireworks.volley(3, { size: 1.1 });
-  }, null, 0.4);
+  tl.call(() => fireworks.start({ welcome: !reduced, heartAround: document.querySelector('.hero__slot') }), null, 0.4);
   tl.add(heroEnter({ reduced }), reduced ? 0.2 : 0.6);
   tl.to('#nav', { opacity: 1, y: 0, duration: 1.2, ease: spring({ bounce: 0.32 }) }, reduced ? 0.2 : 1.0);
   await tl;

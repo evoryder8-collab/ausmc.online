@@ -187,7 +187,7 @@ export function playIntro({ logo, stage, fx, bg, stars, reduced }) {
       // ── 10 · finale: bloom, gleam, rim glint, glow
       const F = 5.05;
       tl.to(logo.glow, { opacity: 1, scale: 1.12, duration: 0.55, ease: 'power2.out' }, F).to(logo.glow, { scale: 1, duration: 1.6, ease: 'sine.inOut' }, F + 0.55);
-      tl.fromTo(logo.gleam.firstElementChild, { xPercent: -160 }, { xPercent: 160, duration: 1.25, ease: 'power2.inOut' }, F);
+      tl.fromTo(logo.gleam.firstElementChild, { x: 0, xPercent: -160 }, { x: 0, xPercent: 160, duration: 1.25, ease: 'power2.inOut' }, F);
       tl.fromTo(logo.rim, { opacity: 0, rotation: -100 }, { opacity: 1, rotation: 260, duration: 1.7, ease: 'power2.inOut' }, F).to(logo.rim, { opacity: 0, duration: 0.6 }, F + 1.4);
       tl.to(rays, { opacity: 0.6, scale: 1, duration: 1.6, ease: 'power2.out' }, F);
       tl.to(bg, { pulse: 1, duration: 0.15 }, F).to(bg, { pulse: 0.15, duration: 1.8 }, F + 0.15);

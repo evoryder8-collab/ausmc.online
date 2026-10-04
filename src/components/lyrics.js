@@ -21,7 +21,25 @@ const AVOID = [
 const AVOID_CINEMA = '.intro__dest strong, .intro__dest span, .intro__dest small, .intro__skip.is-shown';
 let cinema = false;
 
+// Safari/WebKit (every iPhone browser) draws each filtered word as its own
+// layer and clips the soft text-shadow to a visible box, so no blur there.
+const WEBKIT = (() => {
+  const ua = navigator.userAgent;
+  return /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) || (/Safari\//.test(ua) && !/Chrome|Chromium|Edg|OPR|Android/.test(ua));
+})();
+const BL = (px) => (WEBKIT ? 'none' : `blur(${px}px)`);
+
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const edgePad = () => (innerWidth < 720 ? 10 : 20);
+
+/** the largest scale (≤ max) that keeps an element inside the screen width */
+function fitScale(el, max) {
+  const r = el.getBoundingClientRect();
+  if (!r.width) return max;
+  const cx = r.left + r.width / 2;
+  const room = Math.min(cx - edgePad(), innerWidth - edgePad() - cx);
+  return clamp((room * 2) / r.width, 1, max);
+}
 const rnd = (a, b) => a + Math.random() * (b - a);
 
 function behaviorFor(text) {
@@ -111,7 +129,7 @@ function inParts(tl, parts, A, from, { ease = S(0.32), at = 0, settle = 1 } = {}
   const d = Math.max(0.12, A * 0.7);
   const st = n > 1 ? Math.max(0, (A - d * 0.5) / (n - 1)) : 0;
   const { opacity: _o, filter, ...motion } = from;
-  tl.fromTo(parts, { opacity: 0, filter: filter || 'blur(0px)' }, { opacity: 1, filter: 'blur(0px)', duration: d * 0.8, stagger: st, ease: 'power2.out' }, at);
+  tl.fromTo(parts, { opacity: 0, filter: filter || BL(0) }, { opacity: 1, filter: BL(0), duration: d * 0.8, stagger: st, ease: 'power2.out' }, at);
   if (Object.keys(motion).length) {
     const to = Object.fromEntries(Object.keys(motion).map((k) => [k, k.startsWith('scale') ? 1 : 0]));
     tl.fromTo(parts, motion, { ...to, duration: d * 1.6 * settle, stagger: st, ease }, at);
@@ -119,7 +137,7 @@ function inParts(tl, parts, A, from, { ease = S(0.32), at = 0, settle = 1 } = {}
 }
 
 function outParts(tl, parts, at, R, to = {}) {
-  tl.to(parts, { opacity: 0, filter: 'blur(8px)', y: '-=12', duration: R, stagger: parts.length > 1 ? Math.min(0.03, R / parts.length / 2) : 0, ease: 'power2.in', ...to }, at);
+  tl.to(parts, { opacity: 0, filter: BL(8), y: '-=12', duration: R, stagger: parts.length > 1 ? Math.min(0.03, R / parts.length / 2) : 0, ease: 'power2.in', ...to }, at);
 }
 
 /** deterministic tremble that survives scrubbing */
@@ -148,13 +166,14 @@ function build(m, base) {
   switch (m.b) {
     case 'care':
       size = base * 1.1;
-      inParts(tl, words, A, { y: 18, filter: 'blur(12px)' }, { ease: 'power3.out' });
+      inParts(tl, words, A, { y: 18, filter: BL(12) }, { ease: 'power3.out' });
       tl.to(el, { x: '+=22', rotation: -2.5, duration: m.total, ease: 'sine.inOut' }, 0);
       outParts(tl, words, exitAt, R);
       break;
 
     case 'long': {
-      inParts(tl, chars, A, { y: 22, filter: 'blur(8px)' });
+      el.dataset.grow = '0.28';
+      inParts(tl, chars, A, { y: 22, filter: BL(8) });
       const lw = word('long');
       if (lw) tl.fromTo(lw, { '--w': 85 }, { '--w': 125, duration: Math.max(0.3, dur - A * 0.5), ease: 'sine.inOut' }, A * 0.5);
       tl.fromTo(inner, { letterSpacing: '0em' }, { letterSpacing: '0.07em', duration: dur, ease: 'none' }, 0);
@@ -164,13 +183,13 @@ function build(m, base) {
 
     case 'run': {
       pref = 'left';
-      el.dataset.reach = String(Math.round(base * 1.8)); // room for the run across
+      el.dataset.reach = String(Math.round(base * 2.3)); // room for the run across + its exit
       el.classList.add('ly--skew');
-      tl.fromTo(words, { x: -base * 3, opacity: 0, filter: 'blur(12px)' }, { x: 0, opacity: 1, filter: 'blur(0px)', duration: Math.max(0.18, A * 0.85), stagger: A * 0.15 / words.length, ease: 'expo.out' }, 0);
+      tl.fromTo(words, { x: -base * 1.4, opacity: 0, filter: BL(12) }, { x: 0, opacity: 1, filter: BL(0), duration: Math.max(0.18, A * 0.85), stagger: A * 0.15 / words.length, ease: 'expo.out' }, 0);
       tl.to(el, { x: `+=${base * 1.6}`, duration: dur, ease: 'none' }, 0);
       const dn = word('down');
       if (dn) tl.to(dn, { y: base * 0.38, rotation: 7, duration: Math.max(0.2, hold), ease: 'power2.in' }, A);
-      tl.to(words, { x: `+=${base * 4}`, opacity: 0, filter: 'blur(12px)', duration: R, stagger: 0.025, ease: 'power3.in' }, exitAt);
+      tl.to(words, { x: `+=${base * 0.6}`, opacity: 0, filter: BL(12), duration: R, stagger: 0.025, ease: 'power2.in' }, exitAt);
       break;
     }
 
@@ -178,7 +197,8 @@ function build(m, base) {
       pref = 'center';
       size = base * (m.last ? 3.3 : 2.7);
       const long = dur > 2.5;
-      tl.fromTo(inner, { opacity: 0, filter: 'blur(16px)' }, { opacity: 1, filter: 'blur(0px)', duration: Math.max(0.08, A), ease: 'power2.out' }, 0);
+      if (long) el.dataset.grow = '0.45';
+      tl.fromTo(inner, { opacity: 0, filter: BL(16) }, { opacity: 1, filter: BL(0), duration: Math.max(0.08, A), ease: 'power2.out' }, 0);
       tl.fromTo(inner, { scale: 1.75 }, { scale: 1, duration: Math.min(0.75, Math.max(0.3, dur * 0.8)), ease: S(0.42) }, 0);
       if (long) {
         tl.to(inner, { scale: 1.2, duration: hold, ease: 'sine.inOut' }, A + 0.5);
@@ -188,15 +208,15 @@ function build(m, base) {
           g.className = 'ly__ghost';
           inner.parentNode.appendChild(g);
           const start = 0.25 + k * Math.max(0.6, (dur - 1.5) / 3);
-          tl.fromTo(g, { opacity: 0.55, scale: 1 }, { opacity: 0, scale: 1.9, duration: 2.6, ease: 'power2.out' }, start);
+          tl.fromTo(g, { opacity: 0.55, scale: 1 }, { opacity: 0, scale: () => fitScale(g, 1.9), duration: 2.6, ease: 'power2.out' }, start);
         }
       } else {
         const g = inner.cloneNode(true);
         g.className = 'ly__ghost';
         inner.parentNode.appendChild(g);
-        tl.fromTo(g, { opacity: 0.6, scale: 1 }, { opacity: 0, scale: 1.7, duration: 0.9, ease: 'power2.out' }, 0.04);
+        tl.fromTo(g, { opacity: 0.6, scale: 1 }, { opacity: 0, scale: () => fitScale(g, 1.7), duration: 0.9, ease: 'power2.out' }, 0.04);
       }
-      tl.to(inner, { opacity: 0, scale: '+=0.18', filter: 'blur(14px)', duration: R, ease: 'power2.in' }, exitAt);
+      tl.to(inner, { opacity: 0, scale: '+=0.18', filter: BL(14), duration: R, ease: 'power2.in' }, exitAt);
       break;
     }
 
@@ -221,10 +241,10 @@ function build(m, base) {
     }
 
     case 'chase':
-      inParts(tl, words, A, { x: -base * 2.2, filter: 'blur(10px)' }, { ease: 'expo.out' });
+      inParts(tl, words, A, { x: -base * 1.2, filter: BL(10) }, { ease: 'expo.out' });
       words.forEach((w, k) => tl.to(w, { x: base * (0.15 + k * 0.25), duration: hold, ease: 'none' }, A));
       if (word('new')) tl.fromTo(word('new'), { textShadow: '0 0 0px rgba(255,255,255,0)' }, { textShadow: '0 0 26px rgba(160,190,255,1)', duration: 0.5, yoyo: true, repeat: 1 }, A + hold * 0.4);
-      tl.to(words, { x: `+=${base * 3}`, opacity: 0, filter: 'blur(10px)', duration: R, stagger: 0.04, ease: 'power3.in' }, exitAt);
+      tl.to(words, { x: `+=${base * 1.2}`, opacity: 0, filter: BL(10), duration: R, stagger: 0.04, ease: 'power3.in' }, exitAt);
       break;
 
     case 'flutter':
@@ -238,7 +258,7 @@ function build(m, base) {
       pref = 'corner';
       size = base * 0.95;
       ['tiny', 'print'].forEach((k) => word(k)?.classList.add('ly-tiny'));
-      inParts(tl, words.slice(0, 3), A, { y: 12, filter: 'blur(8px)' }, { ease: 'power3.out' });
+      inParts(tl, words.slice(0, 3), A, { y: 12, filter: BL(8) }, { ease: 'power3.out' });
       const tinyChars = [...el.querySelectorAll('.ly-tiny .lc')];
       tl.fromTo(tinyChars, { opacity: 0 }, { opacity: 1, duration: 0.01, stagger: Math.min(0.06, hold / tinyChars.length / 2) }, A * 0.8);
       outParts(tl, words, exitAt, R);
@@ -262,16 +282,16 @@ function build(m, base) {
 
     case 'allin':
       ['all', 'in'].forEach((k) => word(k)?.classList.add('ly-strong'));
-      inParts(tl, words, A, { scale: 1.5, filter: 'blur(10px)' }, { ease: S(0.25) });
+      inParts(tl, words, A, { scale: 1.5, filter: BL(10) }, { ease: S(0.25) });
       tl.to(inner, { scale: 1.06, duration: hold, ease: 'sine.out' }, A);
-      tl.to(inner, { scale: 1.3, opacity: 0, filter: 'blur(10px)', duration: R, ease: 'power2.in' }, exitAt);
+      tl.to(inner, { scale: 1.3, opacity: 0, filter: BL(10), duration: R, ease: 'power2.in' }, exitAt);
       break;
 
     case 'burst':
       size = base * 1.35;
       tl.fromTo(inner, { opacity: 0 }, { opacity: 1, duration: A, ease: 'none' }, 0);
       tl.fromTo(inner, { scale: 0.2, rotation: -10 }, { scale: 1, rotation: 0, duration: 0.5, ease: S(0.55) }, 0);
-      tl.to(inner, { scale: 1.45, opacity: 0, filter: 'blur(10px)', duration: R, ease: 'power2.in' }, exitAt);
+      tl.to(inner, { scale: 1.45, opacity: 0, filter: BL(10), duration: R, ease: 'power2.in' }, exitAt);
       break;
 
     case 'fall': {
@@ -292,8 +312,8 @@ function build(m, base) {
       break;
 
     case 'scrape':
-      inParts(tl, words, A, { x: -base * 1.2, skewX: 32 }, { ease: (t) => Math.min(1, t + Math.sin(t * 42) * 0.05 * (1 - t)) });
-      outParts(tl, words, exitAt, R, { x: `+=${base * 0.6}`, skewX: -20 });
+      inParts(tl, words, A, { x: -base * 0.7, skewX: 32 }, { ease: (t) => Math.min(1, t + Math.sin(t * 42) * 0.05 * (1 - t)) });
+      outParts(tl, words, exitAt, R, { x: `+=${base * 0.4}`, skewX: -20 });
       break;
 
     case 'shake':
@@ -320,7 +340,7 @@ function build(m, base) {
     case 'no': {
       const no = words.find((w) => w.dataset.w === 'no');
       no?.classList.add('ly-no');
-      inParts(tl, words.filter((w) => w !== no), A, { y: 14, filter: 'blur(8px)' });
+      inParts(tl, words.filter((w) => w !== no), A, { y: 14, filter: BL(8) });
       if (no) {
         tl.fromTo(no, { scale: 2.3, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.55, ease: S(0.4) }, A * 0.3);
         tl.to(no, { rotation: 8, duration: 0.11, yoyo: true, repeat: 5, ease: 'sine.inOut' }, A + 0.4);
@@ -337,9 +357,9 @@ function build(m, base) {
 
     case 'skin':
       size = base * 1.15;
-      tl.fromTo(inner, { opacity: 0, filter: 'blur(18px)', letterSpacing: '0.3em' }, { opacity: 1, filter: 'blur(0px)', letterSpacing: '0.01em', duration: Math.max(A, Math.min(1.1, dur * 0.5)), ease: 'power3.out' }, 0);
+      tl.fromTo(inner, { opacity: 0, filter: BL(18), letterSpacing: '0.3em' }, { opacity: 1, filter: BL(0), letterSpacing: '0.01em', duration: Math.max(A, Math.min(1.1, dur * 0.5)), ease: 'power3.out' }, 0);
       tl.to(inner, { scale: 1.04, duration: hold, ease: 'sine.inOut' }, A);
-      tl.to(inner, { opacity: 0, filter: 'blur(16px)', duration: R, ease: 'power1.in' }, exitAt);
+      tl.to(inner, { opacity: 0, filter: BL(16), duration: R, ease: 'power1.in' }, exitAt);
       break;
 
     case 'foolish':
@@ -352,7 +372,7 @@ function build(m, base) {
     case 'gone': {
       inParts(tl, words, A, { y: 14 });
       const g = word('gone');
-      if (g) tl.to(g.querySelectorAll('.lc'), { y: -base * 0.8, opacity: 0, filter: 'blur(6px)', duration: Math.max(0.3, hold * 0.6), stagger: hold * 0.12, ease: 'power1.in' }, A + 0.2);
+      if (g) tl.to(g.querySelectorAll('.lc'), { y: -base * 0.8, opacity: 0, filter: BL(6), duration: Math.max(0.3, hold * 0.6), stagger: hold * 0.12, ease: 'power1.in' }, A + 0.2);
       outParts(tl, words.filter((w) => w !== g), exitAt, R);
       break;
     }
@@ -377,14 +397,14 @@ function build(m, base) {
       break;
 
     case 'choose':
-      inParts(tl, words, Math.min(dur * 0.7, A + 0.6), { y: 24, filter: 'blur(6px)' }, { ease: S(0.3) });
+      inParts(tl, words, Math.min(dur * 0.7, A + 0.6), { y: 24, filter: BL(6) }, { ease: S(0.3) });
       outParts(tl, words, exitAt, R);
       break;
 
     case 'heart': {
       const h = word('heart');
       h?.classList.add('ly-heart');
-      inParts(tl, words, A, { y: 16, filter: 'blur(8px)' });
+      inParts(tl, words, A, { y: 16, filter: BL(8) });
       if (h) {
         const beats = Math.max(1, Math.floor(hold / 0.78));
         for (let k = 0; k < beats; k++) {
@@ -408,7 +428,7 @@ function build(m, base) {
     }
 
     case 'start': {
-      inParts(tl, words, A, { y: 18, filter: 'blur(10px)' }, { ease: 'power3.out' });
+      inParts(tl, words, A, { y: 18, filter: BL(10) }, { ease: 'power3.out' });
       const st = word('start');
       if (st) {
         tl.to(st, { scaleY: 0.82, y: base * 0.06, transformOrigin: '50% 100%', duration: 0.5, ease: 'power2.in' }, Math.max(A, exitAt - 0.9));
@@ -420,21 +440,21 @@ function build(m, base) {
 
     case 'whisper':
       size = base * 0.82;
-      tl.fromTo(inner, { opacity: 0, filter: 'blur(10px)' }, { opacity: 0.68, filter: 'blur(0px)', duration: Math.max(A, 0.6), ease: 'power2.out' }, 0);
-      tl.to(inner, { opacity: 0, filter: 'blur(8px)', duration: R, ease: 'power1.in' }, exitAt);
+      tl.fromTo(inner, { opacity: 0, filter: BL(10) }, { opacity: 0.68, filter: BL(0), duration: Math.max(A, 0.6), ease: 'power2.out' }, 0);
+      tl.to(inner, { opacity: 0, filter: BL(8), duration: R, ease: 'power1.in' }, exitAt);
       break;
 
     case 'enough':
       el.classList.add('ly--heavy');
       tl.fromTo(inner, { y: -base * 1.4, opacity: 0 }, { y: 0, opacity: 1, duration: Math.max(0.45, A * 1.8), ease: 'bounce.out' }, 0);
       tl.to(inner, { scaleY: 0.94, scaleX: 1.03, duration: 0.18, yoyo: true, repeat: 1, ease: 'power2.inOut' }, Math.max(0.45, A * 1.8) - 0.1);
-      tl.to(inner, { y: base * 0.7, opacity: 0, filter: 'blur(8px)', duration: R, ease: 'power2.in' }, exitAt);
+      tl.to(inner, { y: base * 0.7, opacity: 0, filter: BL(8), duration: R, ease: 'power2.in' }, exitAt);
       break;
 
     case 'day':
       pref = 'bottom';
       el.classList.add('ly--warm');
-      inParts(tl, words, A, { y: base * 0.9, filter: 'blur(10px)' }, { ease: 'power3.out' });
+      inParts(tl, words, A, { y: base * 0.9, filter: BL(10) }, { ease: 'power3.out' });
       outParts(tl, words, exitAt, R);
       break;
 
@@ -443,11 +463,11 @@ function build(m, base) {
       size = base * 1.5;
       tl.fromTo(inner, { opacity: 0 }, { opacity: 1, duration: A, ease: 'none' }, 0);
       tl.fromTo(inner, { scale: 0.5, y: base * 1.2 }, { scale: 1, y: 0, duration: 0.7, ease: S(0.5) }, 0);
-      tl.to(inner, { y: -base * 0.8, opacity: 0, filter: 'blur(10px)', duration: R, ease: 'power2.in' }, exitAt);
+      tl.to(inner, { y: -base * 0.8, opacity: 0, filter: BL(10), duration: R, ease: 'power2.in' }, exitAt);
       break;
 
     default: // gentle drift; long, sustained lines open up a little
-      inParts(tl, words, A, { y: 20, filter: 'blur(10px)' }, { ease: 'power3.out' });
+      inParts(tl, words, A, { y: 20, filter: BL(10) }, { ease: 'power3.out' });
       tl.to(el, { y: `-=${base * 0.3}`, duration: m.total, ease: 'sine.out' }, 0);
       if (dur / m.t.length > 0.11) tl.fromTo(inner, { letterSpacing: '0em' }, { letterSpacing: '0.05em', duration: dur, ease: 'sine.out' }, 0);
       outParts(tl, words, exitAt, R);
@@ -470,14 +490,14 @@ function place(el, pref, occupied, lastPos) {
   const pad = vw < 720 ? 12 : 28;
   const nav = cinema ? null : document.querySelector('.nav__pill')?.getBoundingClientRect();
   const top = cinema ? Math.max(24, vh * 0.08) : (nav ? nav.bottom : 70) + 10;
-  const reach = +el.dataset.reach || 0;
+  const reach = (+el.dataset.reach || 0) + el.offsetWidth * (+el.dataset.grow || 0);
   let w = el.offsetWidth + reach;
   let h = el.offsetHeight;
   const maxW = vw - pad * 2;
   if (w > maxW) {
     const f = maxW / w;
     el.style.fontSize = `${parseFloat(el.style.fontSize) * f}px`;
-    w = el.offsetWidth + reach * f;
+    w = (el.offsetWidth + reach) * f;
     h = el.offsetHeight;
   }
   const avoid = [...document.querySelectorAll(cinema ? AVOID_CINEMA : AVOID)]
@@ -555,7 +575,7 @@ export function createLyrics(layer, { onCue } = {}) {
     const occupied = [...active.values()].map((a) => a.rect);
     const pos = place(el, pref, occupied, lastPos);
     if (pref !== 'center') lastPos = pos;
-    active.set(m.i, { el, tl, rect: pos.rect });
+    active.set(m.i, { el, tl, rect: pos.rect, fx: 0, fs: 1, words: [...el.querySelectorAll('.ly__in .lw')] });
   };
 
   let lastDuck = 0;
@@ -575,6 +595,42 @@ export function createLyrics(layer, { onCue } = {}) {
       if (a.duck !== o) {
         a.duck = o;
         a.el.firstElementChild.style.opacity = o;
+      }
+    }
+  };
+
+  // keep every visible letter inside the left/right screen edges
+  const contain = () => {
+    const vw = innerWidth;
+    const pad = edgePad();
+    for (const a of active.values()) {
+      let L = Infinity;
+      let R = -Infinity;
+      for (const w of a.words) {
+        if (gsap.getProperty(w, 'opacity') < 0.05) continue;
+        for (const c of w.children) {
+          const r = c.getBoundingClientRect();
+          if (!r.width) continue;
+          if (r.left < L) L = r.left;
+          if (r.right > R) R = r.right;
+        }
+      }
+      if (L === Infinity) continue;
+      const duck = a.el.firstElementChild;
+      const d = duck.getBoundingClientRect();
+      const c = d.left + d.width / 2; // the duck scales around its centre
+      const avail = vw - pad * 2;
+      const width = R - L;
+      let k = 1;
+      if (width > avail) k = (avail / width) * 0.995; // too wide (e.g. an entrance punch): fit it
+      else if (a.fs < 1) k = Math.min(1 / a.fs, (avail / width) * 0.995, 1.06); // ease back to full size
+      const nl = c + (L - c) * k;
+      const nr = c + (R - c) * k;
+      const shift = nl < pad ? pad - nl : nr > vw - pad ? vw - pad - nr : 0;
+      if (k !== 1 || Math.abs(shift) > 0.3) {
+        a.fs *= k;
+        a.fx += shift;
+        duck.style.transform = `translate3d(${a.fx.toFixed(1)}px,0,0) scale(${a.fs.toFixed(4)})`;
       }
     }
   };
@@ -603,6 +659,7 @@ export function createLyrics(layer, { onCue } = {}) {
         } else cur.tl.time(t - m.s);
       }
     }
+    contain();
   };
 
   return {

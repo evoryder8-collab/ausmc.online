@@ -261,7 +261,7 @@ export function initHero({ logo, reduced }) {
       const band = logo.gleam.firstElementChild;
       setInterval(() => {
         if (document.hidden || hero.getBoundingClientRect().bottom < 0) return;
-        gsap.fromTo(band, { xPercent: -160 }, { xPercent: 160, duration: 1.3, ease: 'power2.inOut' });
+        gsap.fromTo(band, { x: 0, xPercent: -160 }, { x: 0, xPercent: 160, duration: 1.3, ease: 'power2.inOut' });
         gsap.fromTo(logo.rim, { opacity: 0, rotation: -100 }, { opacity: 0.9, rotation: 260, duration: 1.8, ease: 'power2.inOut', onComplete: () => gsap.to(logo.rim, { opacity: 0, duration: 0.5 }) });
       }, 7000);
 

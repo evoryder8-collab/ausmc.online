@@ -17,7 +17,9 @@ npm run dev
 
 ## The opening sequence
 
-Sound On → the layered logo assembles (short cut, ~2.7s) → the camera flies through the badge into the sky → the plane arrives over Sydney (`public/media/plane-*.mp4`, with its own flyby audio). The official soundtrack enters exactly 20% into that footage, the opening lyrics play over the film, "Skip intro" appears 10s in, and when the film ends the page opens with fireworks over the harbour.
+Sound On (the harbour ambience starts on the tap) → the layered logo assembles (short cut, ~2.7s) → the camera flies through the badge into the sky → the plane arrives over Sydney (`public/media/plane-*.mp4`, trimmed to 10.9s, with its own flyby audio). The official soundtrack enters 2.97s into that footage, the opening lyrics play over the film, "Skip intro" appears 7.2s in, and when the film ends the page opens with a short welcome wave of fireworks (one star, and a heart that blooms around the badge) before the regular show.
+
+- **Harbour ambience**: `public/media/harbour-ambience.m4a`, a seamless 38s loop. It is decoded ahead of time, starts on "Yes" and settles to a soft bed once the soundtrack enters.
 
 - **Soundtrack**: `public/media/soundtrack.m4a` ("Run It Down Again"), looping with a short pause. It plays only after a visitor chooses sound; the nav toggle pauses and resumes it.
 - **Kinetic lyrics**: `src/data/lyrics.js` holds the 53 phrase cues exported from DaVinci Resolve. `AUDIO_OFFSET` (0.094s) corrects the soundtrack file's encoder padding, measured by cross-correlating against the full master. Movement for each phrase lives in `src/components/lyrics.js`.
