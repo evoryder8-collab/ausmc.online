@@ -1,0 +1,246 @@
+.venue { position: relative; padding: clamp(80px, 11vw, 150px) 0 20px; }
+.venue__grid {
+  max-width: 1180px;
+  margin: clamp(34px, 5vw, 56px) auto 0;
+  padding: 0 var(--gutter);
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: stretch;
+}
+.venue__map {
+  position: relative;
+  min-height: 520px;
+  border-radius: 36px;
+  padding: 7px;
+  --blur: 18px;
+  overflow: hidden;
+}
+.venue__map .map {
+  position: absolute;
+  inset: 7px;
+  border-radius: 30px;
+  overflow: hidden;
+  background: #030b22;
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+.map iframe { width: 100%; height: 100%; border: 0; filter: invert(0.92) hue-rotate(185deg) saturate(1.4) brightness(0.92); }
+.map::after {
+  /* inner glass vignette over the map */
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 0 80px rgba(0, 4, 20, 0.65);
+  z-index: 3;
+}
+.map__loading {
+  position: absolute;
+  inset: 7px;
+  border-radius: 30px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: radial-gradient(60% 60% at 50% 50%, rgba(30, 70, 180, 0.35), #030b22);
+  transition: opacity 0.9s var(--ease);
+}
+.map__loading span {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #fff;
+  animation: spin 0.9s linear infinite;
+}
+.venue__map.is-ready .map__loading { opacity: 0; }
+
+.map__switch {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 5;
+  display: flex;
+  padding: 4px;
+  border-radius: 999px;
+  --blur: 16px;
+}
+.map__switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  transition: background 0.45s var(--ease), color 0.45s;
+}
+.map__switch button[aria-selected='true'] { background: rgba(255, 255, 255, 0.95); color: var(--navy-800); box-shadow: 0 6px 18px -6px rgba(120, 160, 255, 0.8); }
+.map__switch .i { font-size: 15px; }
+
+/* markers */
+.marker { position: relative; width: 0; height: 0; cursor: pointer; }
+.marker img, .marker__core {
+  position: absolute;
+  left: 0;
+  top: 0;
+  translate: -50% -50%;
+  border-radius: 50%;
+  transition: scale 0.6s var(--ease);
+}
+.marker img { max-width: none; width: 50px; height: 50px; box-shadow: 0 0 0 3px #fff, 0 0 26px rgba(160, 190, 255, 0.9), 0 12px 24px rgba(0, 0, 20, 0.6); }
+.marker__core {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: #fff;
+  font-size: 17px;
+  background: linear-gradient(160deg, var(--red-hi), var(--red));
+  box-shadow: 0 0 0 3px #fff, 0 0 24px rgba(255, 45, 85, 0.9), 0 10px 20px rgba(0, 0, 20, 0.6);
+}
+.marker__pulse {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 50px;
+  height: 50px;
+  margin: -25px 0 0 -25px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  animation: ripple 2.6s var(--ease) infinite;
+}
+.marker--dinner .marker__pulse { width: 38px; height: 38px; margin: -19px 0 0 -19px; border-color: rgba(255, 80, 110, 0.85); }
+.marker__pulse--2 { animation-delay: 1.3s; }
+.marker__label {
+  position: absolute;
+  left: 34px;
+  top: 0;
+  translate: 0 -50%;
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  --blur: 12px;
+  opacity: 0.75;
+  transition: opacity 0.4s, translate 0.6s var(--ease);
+}
+.marker.is-active .marker__label { opacity: 1; translate: 6px -50%; }
+.marker.is-active img, .marker.is-active .marker__core { scale: 1.12; }
+
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  background: rgba(3, 11, 34, 0.7) !important;
+  color: var(--text-3);
+  margin: 0 12px 12px 0 !important;
+  border-radius: 999px !important;
+}
+.maplibregl-ctrl-attrib a { color: var(--text-2) !important; }
+.maplibregl-ctrl-attrib-button { filter: invert(1); }
+.maplibregl-cooperative-gesture-screen {
+  background: rgba(3, 11, 34, 0.55) !important;
+  color: #fff !important;
+  font-family: var(--f-ui) !important;
+  font-size: 16px !important;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  z-index: 4 !important;
+}
+
+/* side panel */
+.venue__panel {
+  padding: clamp(24px, 3vw, 36px);
+  border-radius: 36px;
+  display: flex;
+  flex-direction: column;
+}
+.venue__role { font-size: 12.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #ff8fa3; }
+.venue__name {
+  margin-top: 10px;
+  font-family: var(--f-display);
+  font-stretch: 112%;
+  font-weight: 820;
+  font-size: clamp(30px, 3.4vw, 42px);
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+.venue__when, .venue__addr { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; font-size: 16px; font-weight: 520; }
+.venue__when { margin-top: 18px; }
+.venue__when .i, .venue__addr .i { margin-top: 3px; font-size: 18px; color: var(--red-hi); }
+.venue__blurb { margin-top: 14px; font-size: 15px; line-height: 1.55; color: var(--text-2); }
+
+.btn-here {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 66px;
+  margin-top: 26px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-family: var(--f-display);
+  font-stretch: 112%;
+  font-weight: 760;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+  color: #fff;
+  background: linear-gradient(180deg, #ff4a6c 0%, var(--red) 55%, #b8001f 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -3px 8px rgba(80, 0, 20, 0.35), 0 0 0 1px rgba(255, 120, 145, 0.5), 0 18px 40px -12px rgba(228, 0, 43, 0.85);
+  overflow: hidden;
+  transition: transform 0.6s var(--ease), box-shadow 0.6s var(--ease);
+}
+.btn-here .i { font-size: 21px; transition: transform 0.7s var(--ease); }
+.btn-here:hover { transform: translateY(-3px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -3px 8px rgba(80, 0, 20, 0.35), 0 0 0 1px rgba(255, 150, 170, 0.7), 0 26px 50px -12px rgba(228, 0, 43, 1); }
+.btn-here:hover .i { transform: rotate(45deg) translate(2px, -2px); }
+.btn-here:active { transform: scale(0.97); }
+.btn-here::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: herosheen 4.5s var(--ease) infinite;
+  z-index: -1;
+}
+@keyframes herosheen { 0%, 55% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
+.btn-here__glow {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: inherit;
+  box-shadow: 0 0 40px 6px rgba(228, 0, 43, 0.55);
+  animation: breathe 3s ease-in-out infinite;
+}
+@keyframes breathe { 50% { box-shadow: 0 0 60px 14px rgba(228, 0, 43, 0.75); } }
+.venue__alt { margin-top: 12px; text-align: center; font-size: 13px; color: var(--text-3); }
+.venue__alt a { color: var(--text-2); text-underline-offset: 3px; }
+
+.venue__info { display: grid; gap: 14px; margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--hair); }
+.venue__info li { display: flex; gap: 14px; }
+.venue__info .i {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 10px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.venue__info strong { display: block; font-size: 15px; font-weight: 650; }
+.venue__info span { display: block; margin-top: 2px; font-size: 14px; line-height: 1.5; color: var(--text-2); }
+
+@media (max-width: 960px) {
+  .venue__grid { grid-template-columns: 1fr; }
+  .venue__map { min-height: 0; aspect-ratio: 4 / 4.2; max-height: 70vh; border-radius: 30px; }
+  .map, .map__loading { border-radius: 24px; }
+}
+@media (max-width: 720px) {
+  .venue__map { aspect-ratio: 1 / 1.08; }
+  .map__switch { top: 14px; left: 14px; right: 14px; }
+  .map__switch button { flex: 1; justify-content: center; padding: 9px 8px; }
+  .venue__panel { border-radius: 30px; }
+  .btn-here { height: 62px; }
+}

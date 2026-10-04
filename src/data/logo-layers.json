@@ -1,0 +1,149 @@
+{
+  "size": 1280,
+  "layers": [
+    {
+      "id": "badge",
+      "label": "White circular badge",
+      "src": "logo/badge.png",
+      "x": 35,
+      "y": 35,
+      "w": 1205,
+      "h": 1210
+    },
+    {
+      "id": "ring",
+      "label": "Inner black ring",
+      "src": "logo/ring.png",
+      "x": 210,
+      "y": 200,
+      "w": 855,
+      "h": 875
+    },
+    {
+      "id": "text-top",
+      "label": "AUSTRALIAN MASSAGE text",
+      "src": "logo/text-top.png",
+      "x": 105,
+      "y": 75,
+      "w": 1090,
+      "h": 520
+    },
+    {
+      "id": "text-bottom",
+      "label": "CHAMPIONSHIP text",
+      "src": "logo/text-bottom.png",
+      "x": 160,
+      "y": 880,
+      "w": 930,
+      "h": 325
+    },
+    {
+      "id": "leaf-left",
+      "label": "Left leaf sprig",
+      "src": "logo/leaf-left.png",
+      "x": 80,
+      "y": 565,
+      "w": 130,
+      "h": 320
+    },
+    {
+      "id": "leaf-right",
+      "label": "Right leaf sprig",
+      "src": "logo/leaf-right.png",
+      "x": 1065,
+      "y": 590,
+      "w": 130,
+      "h": 315
+    },
+    {
+      "id": "mainland",
+      "label": "Australia mainland in navy",
+      "src": "logo/mainland.png",
+      "x": 300,
+      "y": 310,
+      "w": 655,
+      "h": 540
+    },
+    {
+      "id": "tasmania",
+      "label": "Tasmania and small islands in navy",
+      "src": "logo/tasmania.png",
+      "x": 665,
+      "y": 335,
+      "w": 190,
+      "h": 600
+    },
+    {
+      "id": "jack-white",
+      "label": "Union Jack white stripes",
+      "src": "logo/jack-white.png",
+      "x": 415,
+      "y": 445,
+      "w": 255,
+      "h": 145
+    },
+    {
+      "id": "jack-red",
+      "label": "Union Jack red stripes",
+      "src": "logo/jack-red.png",
+      "x": 420,
+      "y": 445,
+      "w": 245,
+      "h": 145
+    },
+    {
+      "id": "star-commonwealth",
+      "label": "Commonwealth star",
+      "src": "logo/star-commonwealth.png",
+      "x": 495,
+      "y": 590,
+      "w": 100,
+      "h": 105
+    },
+    {
+      "id": "star-top",
+      "label": "Southern Cross top star",
+      "src": "logo/star-top.png",
+      "x": 750,
+      "y": 480,
+      "w": 70,
+      "h": 70
+    },
+    {
+      "id": "star-left",
+      "label": "Southern Cross left star",
+      "src": "logo/star-left.png",
+      "x": 685,
+      "y": 565,
+      "w": 65,
+      "h": 65
+    },
+    {
+      "id": "star-right",
+      "label": "Southern Cross right star",
+      "src": "logo/star-right.png",
+      "x": 825,
+      "y": 545,
+      "w": 65,
+      "h": 60
+    },
+    {
+      "id": "star-small",
+      "label": "Southern Cross small star",
+      "src": "logo/star-small.png",
+      "x": 800,
+      "y": 600,
+      "w": 45,
+      "h": 45
+    },
+    {
+      "id": "star-bottom",
+      "label": "Southern Cross bottom star",
+      "src": "logo/star-bottom.png",
+      "x": 755,
+      "y": 675,
+      "w": 65,
+      "h": 65
+    }
+  ]
+}
