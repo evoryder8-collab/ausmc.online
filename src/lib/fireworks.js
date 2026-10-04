@@ -218,7 +218,10 @@ export class Fireworks {
     if (sfx && this.sound) {
       const pan = (x / this.W) * 2 - 1;
       this.sound.fwBoom({ pan, size, gain: 0.19 + 0.06 * size });
-      if (type === 'crackle' || type === 'willow' || Math.random() < 0.25) this.sound.fwCrackle({ pan, delay: type === 'willow' ? 0.5 : 0.3, dur: type === 'willow' ? 1.8 : 1.1 });
+      // the heart: real crackles as it grows large and fades
+      if (type === 'heart') {
+        if (!this.sound.fwSample('crackles', { pan: pan * 0.5, gain: 0.32, delay: 0.35, wet: 0.2 })) this.sound.fwCrackle({ pan, delay: 0.35, dur: 1.8 });
+      } else if (type === 'crackle' || type === 'willow' || Math.random() < 0.25) this.sound.fwCrackle({ pan, delay: type === 'willow' ? 0.5 : 0.3, dur: type === 'willow' ? 1.8 : 1.1 });
     }
     this.kick();
   }

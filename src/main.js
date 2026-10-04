@@ -114,7 +114,7 @@ const song = createSong({ onStart: () => lyrics.play(), onPause: () => lyrics.pa
 lyrics.attach(song.audio);
 let revealed = false;
 if (import.meta.env.DEV) {
-  Object.assign(window.__ausmc, { song, film, fireworks, lyrics });
+  Object.assign(window.__ausmc, { song, film, fireworks, lyrics, sound });
   window.__harbourProbe = () => ({ running: !!sound.harbour?.src, gain: sound.harbour?.g ? +sound.harbour.g.gain.value.toFixed(3) : null, ctx: sound.ctx?.state, songPlaying: !song.audio.paused, songT: +song.audio.currentTime.toFixed(2) });
 }
 
@@ -139,6 +139,7 @@ function syncFireworks(m, ms) {
 }
 
 sound.preloadHarbour(`${import.meta.env.BASE_URL}media/harbour-ambience.m4a`);
+sound.preloadFireworks(`${import.meta.env.BASE_URL}media/sfx/`);
 const HARBOUR_BED = 0.32; // level under the soundtrack
 
 const tapSound = document.querySelector('.tap-sound');

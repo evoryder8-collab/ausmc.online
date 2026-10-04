@@ -496,6 +496,43 @@ class SoundEngine {
 
   // ───────────────────────── fireworks ─────────────────────────
 
+  // ───── real firework one-shots (round-robin), decoded ahead of time ─────
+  preloadFireworks(base) {
+    if (this.fwBufs) return;
+    const names = {
+      big: ['boombang-599', 'boomsingle-600', 'boomsingle-601', 'boomsingle-602'],
+      burst: ['burst-60076', 'burst-60078', 'burst-60079', 'burst-60080'],
+      crackles: ['crackles-19'],
+    };
+    const dec = (n) => fetch(`${base}${n}.m4a`).then((r) => r.arrayBuffer())
+      .then((ab) => new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 48000).decodeAudioData(ab)).catch(() => null);
+    this.fwBufs = {};
+    this.fwLast = {};
+    for (const [k, list] of Object.entries(names)) {
+      Promise.all(list.map(dec)).then((bufs) => (this.fwBufs[k] = bufs.filter(Boolean)));
+    }
+  }
+
+  /** play one sample from a pool, never the same one twice in a row */
+  fwSample(pool, { pan = 0, gain = 0.4, delay = 0, rate = 1, wet = 0.12 } = {}) {
+    const bufs = this.fwBufs?.[pool];
+    if (!this.live || !bufs?.length) return false;
+    let i = Math.floor(Math.random() * bufs.length);
+    if (bufs.length > 1 && i === this.fwLast[pool]) i = (i + 1) % bufs.length;
+    this.fwLast[pool] = i;
+    const { ctx } = this;
+    const t = this.now(delay);
+    const src = ctx.createBufferSource();
+    src.buffer = bufs[i];
+    src.playbackRate.value = rate;
+    const g = ctx.createGain();
+    g.gain.value = gain;
+    src.connect(g);
+    this.route(g, { pan, wet });
+    src.start(t);
+    return true;
+  }
+
   /** soft rising hiss of a shell climbing (broad filter, no whistle) */
   fwLaunch({ dur = 1.2, pan = 0, gain = 0.035 } = {}) {
     if (!this.live) return;
@@ -522,6 +559,9 @@ class SoundEngine {
   /** the burst: a short, dull thump of air — no ringing sweep */
   fwBoom({ pan = 0, size = 1, gain = 0.26 } = {}) {
     if (!this.live) return;
+    // real recordings when loaded: big shells boom, regular ones burst
+    const rate = 0.93 + Math.random() * 0.12;
+    if (this.fwSample(size >= 1.15 || Math.random() < 0.3 ? 'big' : 'burst', { pan: pan * 0.7, gain: gain * 1.25 * (0.75 + 0.25 * size), rate })) return;
     const { ctx } = this;
     const t = this.now();
     const g = gain * (0.7 + 0.3 * size);
