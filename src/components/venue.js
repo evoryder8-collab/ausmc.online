@@ -33,6 +33,61 @@ const INFO = {
   ],
 };
 
+const PHONE = matchMedia('(max-width: 900px), (pointer: coarse)');
+
+// "Bring Me Here" on phones: a small glass chooser, Google Maps over Apple Maps
+const chooser = (() => {
+  let el = null;
+  let lastFocus = null;
+  const build = () => {
+    el = document.createElement('div');
+    el.className = 'maps-sheet';
+    el.hidden = true;
+    el.innerHTML = `
+      <div class="maps-sheet__scrim" data-close></div>
+      <div class="maps-sheet__card glass" role="dialog" aria-modal="true" aria-labelledby="maps-sheet-title" tabindex="-1">
+        <span class="maps-sheet__icon">${icon('nav')}</span>
+        <p class="maps-sheet__kicker">Get directions</p>
+        <h3 class="maps-sheet__title" id="maps-sheet-title"></h3>
+        <p class="maps-sheet__addr"></p>
+        <a class="maps-sheet__btn maps-sheet__btn--google" data-app="google" target="_blank" rel="noopener">
+          <span class="maps-sheet__badge maps-sheet__badge--google" aria-hidden="true"></span><span>Open in Google Maps</span>${icon('external')}
+        </a>
+        <a class="maps-sheet__btn maps-sheet__btn--apple" data-app="apple" target="_blank" rel="noopener">
+          <span class="maps-sheet__badge maps-sheet__badge--apple" aria-hidden="true"></span><span>Open in Apple Maps</span>${icon('external')}
+        </a>
+        <button type="button" class="maps-sheet__cancel" data-close>Cancel</button>
+      </div>`;
+    document.body.appendChild(el);
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-close]')) { sound.tap(); close(); }
+      else if (e.target.closest('[data-app]')) { sound.tap(); setTimeout(close, 250); }
+    });
+    addEventListener('keydown', (e) => e.key === 'Escape' && !el.hidden && close());
+  };
+  const close = () => {
+    if (!el || el.hidden) return;
+    gsap.to(el.querySelector('.maps-sheet__card'), { opacity: 0, y: 20, scale: 0.96, duration: 0.22, ease: 'power2.in' });
+    gsap.to(el.querySelector('.maps-sheet__scrim'), { opacity: 0, duration: 0.25, onComplete: () => { el.hidden = true; lastFocus?.focus?.({ preventScroll: true }); } });
+  };
+  const open = (loc) => {
+    if (!el) build();
+    lastFocus = document.activeElement;
+    el.querySelector('.maps-sheet__title').textContent = loc.name;
+    el.querySelector('.maps-sheet__addr').textContent = loc.address;
+    el.querySelector('[data-app="google"]').href = directions(loc, 'google');
+    el.querySelector('[data-app="apple"]').href = directions(loc, 'apple');
+    el.hidden = false;
+    const card = el.querySelector('.maps-sheet__card');
+    gsap.fromTo(el.querySelector('.maps-sheet__scrim'), { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' });
+    gsap.fromTo(card, { opacity: 0, y: 40, scale: 0.92 }, { opacity: 1, y: 0, scale: 1, duration: 0.7, ease: spring({ bounce: 0.32 }) });
+    gsap.fromTo(card.querySelectorAll('.maps-sheet__btn, .maps-sheet__cancel'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.07, delay: 0.12, ease: spring({ bounce: 0.3 }) });
+    card.focus({ preventScroll: true }); // focus the dialog, not a button (no ring)
+  };
+  return { open };
+})();
+const openChooser = (loc) => chooser.open(loc);
+
 export function initVenue({ lenis, reduced, glass }) {
   const panel = document.querySelector('.venue__panel');
   const switcher = document.querySelector('.map__switch');
@@ -65,7 +120,14 @@ export function initVenue({ lenis, reduced, glass }) {
       <ul class="venue__info">
         ${INFO[current].map(([ic, h, p]) => `<li>${icon(ic)}<div><strong>${esc(h)}</strong><span>${esc(p)}</span></div></li>`).join('')}
       </ul>`;
-    panel.querySelector('.btn-here').addEventListener('click', () => sound.tap());
+    panel.querySelector('.btn-here').addEventListener('click', (e) => {
+      sound.tap();
+      // phones: let the visitor pick their maps app
+      if (PHONE.matches) {
+        e.preventDefault();
+        openChooser(loc);
+      }
+    });
     panel.querySelector('.btn-here').addEventListener('pointerenter', () => sound.hover());
     if (animate && !reduced) {
       gsap.fromTo(panel.children, { opacity: 0, y: 18, filter: 'blur(6px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.8, stagger: 0.045, ease: spring({ bounce: 0.25 }) });
