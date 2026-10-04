@@ -509,8 +509,8 @@ function attentionHint() {
     sound.softPop({ pitch: 1.2, gain: 0.05 });
 
     // bubble: springs out, rests, vanishes by 2.0s
-    tl.fromTo(tip, { opacity: 0, x: 10, scale: 0.7 }, { opacity: 1, x: 0, scale: 1, duration: 0.45, ease: spring({ bounce: 0.4 }) }, 0);
-    tl.to(tip, { opacity: 0, x: 6, scale: 0.9, duration: 0.35, ease: 'power2.in' }, DUR - 0.35);
+    tl.fromTo(tip, { opacity: 0, y: 10, scale: 0.7 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: spring({ bounce: 0.4 }) }, 0);
+    tl.to(tip, { opacity: 0, y: -4, scale: 0.92, duration: 0.35, ease: 'power2.in' }, DUR - 0.35);
 
     if (!reduced) {
       // a bell hinged at its top: damped sine swing (≈5 Hz, decays to ~2% by 1.3s)
