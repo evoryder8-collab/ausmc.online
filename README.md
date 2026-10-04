@@ -35,7 +35,9 @@ Sound On → the layered logo assembles (short cut, ~2.7s; the harbour ambience 
 - Logo intro animates the 16 separated logo layers in `public/logo/` (cropped and downscaled from the 4096px masters by `scripts/build-logo-layers.py`)
 - Sound is synthesised live with the Web Audio API (`src/lib/audio.js`), so there are no audio files
 - Map: MapLibre GL + OpenFreeMap tiles, restyled in AusMC navy and red
-- Social image: `scripts/build-og.py` → `public/og.jpg`
+- Social preview: `public/social/ausmc-2026-cover-v2.jpg` (1200×630), generated using the official badge and Sydney Harbour reference. Open Graph, Twitter card and event metadata in `index.html` all reference this versioned image.
+- Favicons: `public/favicon.ico` and PNG variants in `public/icons/`; `public/site.webmanifest` supplies the larger device icons. The simplified Australia mark is based on the official badge.
+- Legacy social image: `scripts/build-og.py` → `public/og.jpg` is retained for older cached links; it does not regenerate the current cover.
 
 ## Custom domain (ausmc.online)
 
