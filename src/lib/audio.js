@@ -566,7 +566,11 @@ class SoundEngine {
     this.sceneBufs = {};
     const dec = (n) => fetch(`${base}${n}.m4a`).then((r) => r.arrayBuffer())
       .then((ab) => new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 48000).decodeAudioData(ab)).catch(() => null);
-    const pools = { clinks: ['clink-a2', 'clink-b2', 'clink-b4', 'clink-b5', 'clink-c2'], cheer: ['cheer-195'] };
+    const pools = {
+      clinks: ['clink-a2', 'clink-b2', 'clink-b4', 'clink-b5', 'clink-c2'],
+      cheer: ['cheer-195'],
+      bowl: ['bowl-1', 'bowl-2', 'bowl-3'],
+    };
     this.scenesReady = Promise.all(Object.entries(pools).map(([k, list]) => Promise.all(list.map(dec)).then((b) => (this.sceneBufs[k] = b.filter(Boolean)))));
   }
 
@@ -584,14 +588,45 @@ class SoundEngine {
     setTimeout(() => { sc.dry.disconnect(); sc.wet.disconnect(); }, (fade + 0.2) * 1000);
   }
 
-  newScene() {
+  /** `direct` skips the bus compressor, for samples played at an exact level */
+  newScene({ direct = false } = {}) {
     this.endScene();
     const dry = this.ctx.createGain();
     const wet = this.ctx.createGain();
-    dry.connect(this.dry);
+    dry.connect(direct ? this.master : this.dry);
     wet.connect(this.verbIn);
     this.scene = { dry, wet };
     return this.scene;
+  }
+
+  /** a paused context or samples still on their way: try once more when ready */
+  whenReady(play) {
+    const waits = [this.scenesReady];
+    if (this.ctx.state !== 'running') waits.push(this.ctx.resume());
+    Promise.all(waits).then(play).catch(() => {});
+  }
+
+  /** the Championship: one deep strike of a Tibetan bowl, a different take each time */
+  bowl({ gain = 0.5, retry = true } = {}) {
+    if (!this.enabled || !this.ctx) return;
+    const bufs = this.sceneBufs?.bowl;
+    if (!this.live || !bufs?.length) {
+      if (retry) this.whenReady(() => this.bowl({ gain, retry: false }));
+      return;
+    }
+    const { ctx } = this;
+    const bus = this.newScene({ direct: true });
+    let i;
+    do i = (Math.random() * bufs.length) | 0;
+    while (bufs.length > 1 && i === this.lastBowl);
+    this.lastBowl = i;
+    const src = ctx.createBufferSource();
+    src.buffer = bufs[i];
+    const g = ctx.createGain();
+    g.gain.value = gain / 0.9; // undo the master's 0.9: exactly `gain` × the recording
+    src.connect(g);
+    g.connect(bus.dry);
+    src.start(this.now(0.01));
   }
 
   /**
@@ -603,12 +638,8 @@ class SoundEngine {
     if (!this.enabled || !this.ctx) return;
     const clinks = this.sceneBufs?.clinks;
     const ready = clinks?.length && (!cheer || this.sceneBufs.cheer?.length);
-    // a paused context or samples still on their way: try once more when ready
     if (!this.live || !ready) {
-      if (!retry) return;
-      const waits = [this.scenesReady];
-      if (this.ctx.state !== 'running') waits.push(this.ctx.resume());
-      Promise.all(waits).then(() => this.toast({ cheer, retry: false })).catch(() => {});
+      if (retry) this.whenReady(() => this.toast({ cheer, retry: false }));
       return;
     }
     const { ctx } = this;
