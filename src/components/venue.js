@@ -97,6 +97,7 @@ export function initVenue({ lenis, reduced, glass }) {
   let map = null;
   let markers = {};
   let orbit = null;
+  let flight = 0;
 
   switcher.innerHTML = Object.values(LOCATIONS).map((l) => `
     <button type="button" role="tab" data-loc="${l.id}" aria-selected="${l.id === current}">
@@ -179,8 +180,11 @@ export function initVenue({ lenis, reduced, glass }) {
     const opts = id === 'venue'
       ? { center: loc.lngLat, zoom: innerWidth < 720 ? 14.6 : 15.3, pitch: 58, bearing: -24 }
       : { center: loc.lngLat, zoom: innerWidth < 720 ? 15.8 : 16.4, pitch: 62, bearing: 18 };
+    // only the latest flight may start the orbit: an interrupted flight also
+    // fires "moveend", and the orbit would otherwise cancel the new flight
+    const token = ++flight;
     map.flyTo({ ...opts, duration: first ? 6200 : 3200, curve: first ? 1.7 : 1.3, essential: true });
-    map.once('moveend', () => startOrbit());
+    map.once('moveend', () => token === flight && startOrbit());
   }
 
   const fallback = () => {
@@ -220,7 +224,15 @@ export function initVenue({ lenis, reduced, glass }) {
         el.innerHTML = loc.id === 'venue'
           ? `<span class="marker__pulse"></span><span class="marker__pulse marker__pulse--2"></span><img src="${BASE}logo/badge-192.png" alt="" /><span class="marker__label glass">${esc(loc.name)}</span>`
           : `<span class="marker__pulse"></span><span class="marker__core">${icon('dinner')}</span><span class="marker__label glass">${esc(loc.name)}</span>`;
-        el.addEventListener('click', () => { sound.tap(); select(loc.id); });
+        // tapping a pin (or its label) offers directions straight away
+        el.setAttribute('role', 'button');
+        el.setAttribute('aria-label', `Directions to ${loc.name}`);
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          sound.tap();
+          select(loc.id, { fly: loc.id !== current });
+          openChooser(loc);
+        });
         markers[loc.id] = new Marker({ element: el, anchor: 'center' }).setLngLat(loc.lngLat).addTo(map);
       });
 

@@ -475,10 +475,70 @@ function setupReminders() {
   addEventListener('keydown', (ev) => ev.key === 'Escape' && close());
   addEventListener('scroll', close, { passive: true });
 
+  attentionHint();
+
   // the whole schedule in one go
   const full = document.querySelector('.full-cal');
   full?.addEventListener('click', () => {
     sound.softPop({ gain: 0.06 });
     location.href = icsUrl(FULL_ICS);
+  });
+}
+
+// The first bell introduces itself once: a hinged, decaying swing, a glow and a
+// short "Set reminders" bubble — all finished at exactly 2.0s.
+function attentionHint() {
+  const bell = document.querySelector('.remind');
+  if (!bell) return;
+  const row = bell.closest('.row');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const play = () => {
+    const icon = bell.querySelector(':scope > .i');
+    const tip = document.createElement('span');
+    tip.className = 'remind-hint';
+    tip.setAttribute('role', 'status');
+    tip.textContent = 'Set reminders';
+    bell.parentElement.appendChild(tip);
+    const ring = document.createElement('span');
+    ring.className = 'remind-ring';
+    bell.appendChild(ring);
+
+    const DUR = 2; // total, to the frame
+    const tl = gsap.timeline({ onComplete: () => { tip.remove(); ring.remove(); gsap.set([icon, bell], { clearProps: 'rotation,boxShadow' }); } });
+    sound.softPop({ pitch: 1.2, gain: 0.05 });
+
+    // bubble: springs out, rests, vanishes by 2.0s
+    tl.fromTo(tip, { opacity: 0, x: 10, scale: 0.7 }, { opacity: 1, x: 0, scale: 1, duration: 0.45, ease: spring({ bounce: 0.4 }) }, 0);
+    tl.to(tip, { opacity: 0, x: 6, scale: 0.9, duration: 0.35, ease: 'power2.in' }, DUR - 0.35);
+
+    if (!reduced) {
+      // a bell hinged at its top: damped sine swing (≈5 Hz, decays to ~2% by 1.3s)
+      const p = { t: 0 };
+      tl.to(p, {
+        t: 1.3, duration: 1.3, ease: 'none',
+        onUpdate: () => gsap.set(icon, { rotation: 24 * Math.exp(-3 * p.t) * Math.sin(2 * Math.PI * 4.6 * p.t), transformOrigin: '50% 12%' }),
+      }, 0.05);
+      // glow swells with the first swings, then settles back
+      tl.fromTo(bell, { boxShadow: 'inset 0 0 0 1px rgba(255,90,120,0), 0 0 0px 0px rgba(255,45,85,0)' },
+        { boxShadow: 'inset 0 0 0 1px rgba(255,120,145,0.75), 0 0 26px 4px rgba(255,45,85,0.75)', duration: 0.35, ease: 'power2.out' }, 0.05);
+      tl.to(bell, { boxShadow: 'inset 0 0 0 1px rgba(255,90,120,0), 0 0 0px 0px rgba(255,45,85,0)', duration: 0.9, ease: 'power2.inOut' }, DUR - 0.9);
+      tl.fromTo(ring, { scale: 1, opacity: 0.7 }, { scale: 2.1, opacity: 0, duration: 0.9, ease: 'power2.out' }, 0.1);
+    }
+    tl.to({}, { duration: 0.001 }, DUR - 0.001); // pins the timeline at exactly 2.0s
+  };
+
+  ScrollTrigger.create({
+    trigger: bell,
+    start: 'top 75%', // the bell has risen to 25% above the bottom of the screen
+    once: true,
+    onEnter: () => {
+      if (!row || row.classList.contains('is-landed') || reduced) return play();
+      // wait for the row to finish landing so the swing isn't lost in it
+      const mo = new MutationObserver(() => {
+        if (row.classList.contains('is-landed')) { mo.disconnect(); setTimeout(play, 420); }
+      });
+      mo.observe(row, { attributes: true, attributeFilter: ['class'] });
+    },
   });
 }
