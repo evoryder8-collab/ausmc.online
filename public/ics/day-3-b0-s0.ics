@@ -1,0 +1,25 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//AusMC//Official Schedule 2026//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:AusMC 2026 · Morning Briefing
+X-WR-TIMEZONE:Australia/Sydney
+BEGIN:VEVENT
+UID:day-3-b0-s0@ausmc.online
+DTSTAMP:20261004T103700Z
+DTSTART:20261010T220000Z
+DTEND:20261010T223000Z
+SUMMARY:AusMC 2026 · Morning Briefing
+LOCATION:Cockatoo Island\, Sydney Harbour NSW
+DESCRIPTION:Welcome back and meeting with all participants\, judges\, and o
+ fficials at the main stage.\nOfficial schedule: https://ausmc.online/#day-
+ 3
+URL:https://ausmc.online/#day-3
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Morning Briefing starts in 15 minutes
+TRIGGER:-PT15M
+END:VALARM
+END:VEVENT
+END:VCALENDAR

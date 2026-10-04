@@ -117,10 +117,10 @@
       <!-- Hero -->
       <section class="hero" id="top" aria-labelledby="hero-title">
         <div class="hero__media" aria-hidden="true">
-          <video class="hero__video" muted loop playsinline preload="auto" poster="./media/header-poster.jpg"></video>
+          <video class="hero__video" muted loop playsinline preload="auto" poster="./media/harbour-poster.jpg"></video>
           <div class="hero__dim"></div>
-          <canvas class="hero__fireworks"></canvas>
           <div class="hero__shade"></div>
+          <canvas class="hero__fireworks"></canvas>
         </div>
         <div class="hero__inner">
           <div class="hero__slot"></div>
@@ -134,7 +134,11 @@
             <p class="countdown__label"><span class="lg">Countdown to Day 1 · Friday 9 October, 9:00 AM Sydney time</span><span class="sm">Day 1 · Fri 9 Oct · 9:00 AM Sydney</span></p>
             <div class="countdown__cells" role="timer" aria-live="off"></div>
             <div class="countdown__sweep" aria-hidden="true"><span></span></div>
-            <p class="countdown__clock"><span class="countdown__pin" data-icon="clock"></span>Sydney now <time class="countdown__now"></time></p>
+            <div class="countdown__clockrow">
+              <p class="countdown__clock"><span class="countdown__pin" data-icon="clock"></span><span class="countdown__where">Sydney now</span> <time class="countdown__now"></time></p>
+              <button type="button" class="local-btn"><span data-icon="locate"></span><span>Check your local time</span></button>
+            </div>
+            <p class="countdown__alt" hidden></p>
           </div>
           <ul class="hero__meta">
             <li class="glass-chip" data-icon="calendar">Fri 9 – Sun 11 October 2026</li>
@@ -167,6 +171,7 @@
         </div>
         <div class="days"></div>
         <p class="schedule__note"></p>
+        <div class="schedule__cal"><button type="button" class="full-cal glass"><span data-icon="calplus"></span>Add the full schedule to your calendar</button></div>
       </section>
 
       <!-- Venue -->
@@ -188,7 +193,7 @@
 
     <footer class="footer">
       <div class="footer__media" aria-hidden="true">
-        <video class="footer__video" muted loop playsinline preload="none" poster="./media/footer-poster.jpg"></video>
+        <video class="footer__video" muted loop playsinline preload="none" poster="./media/skyline-poster.jpg"></video>
       </div>
       <div class="footer__mark" aria-hidden="true">AusMC 2026</div>
       <p class="footer__line">Cockatoo Island <i></i> Sydney <i></i> Australia</p>

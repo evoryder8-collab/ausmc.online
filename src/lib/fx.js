@@ -35,6 +35,7 @@ export class FX {
     this.flares = [];
     this.emitters = [];
     this.running = false;
+    this.speed = 1; // physics time scale (the short logo intro runs it faster)
     this.sprites = Object.fromEntries(Object.entries(PALETTE).map(([k, v]) => [k, sprite(v)]));
     this.resize();
     addEventListener('resize', () => this.resize());
@@ -89,13 +90,20 @@ export class FX {
   }
 
   /** follow a moving point, shedding glowing particles */
+  clear() {
+    this.parts.length = 0;
+    this.rings.length = 0;
+    this.flares.length = 0;
+    this.emitters.length = 0;
+  }
+
   trail(getPos, duration, { color = 'ice', rate = 90, size = [1, 2.4] } = {}) {
     this.emitters.push({ getPos, until: performance.now() + duration * 1000, acc: 0, color, rate, size, prev: null });
     this.start();
   }
 
   loop(now) {
-    const dt = Math.min(0.05, (now - this.last) / 1000);
+    const dt = Math.min(0.05, (now - this.last) / 1000) * this.speed;
     this.last = now;
     const { ctx } = this;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);

@@ -283,7 +283,7 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
   -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.55) 28%, #000 58%);
   mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.55) 28%, #000 58%);
 }
-.footer__video { width: 100%; height: 100%; object-fit: cover; object-position: 50% 42%; filter: saturate(1.05) contrast(1.04) brightness(0.86); }
+.footer__video { width: 100%; height: 100%; object-fit: cover; object-position: 36% 62%; filter: saturate(1.05) contrast(1.04) brightness(0.86); }
 .footer__media::after {
   content: '';
   position: absolute;
@@ -347,6 +347,8 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
   transition: opacity 0.9s var(--ease);
 }
 .lyrics.is-on { opacity: 1; }
+.lyrics.is-cinema { z-index: 55; }
+.lyrics.is-cinema .ly { text-shadow: 0 2px 22px rgba(0, 12, 45, 0.7), 0 0 3px rgba(0, 12, 45, 0.5); }
 .ly {
   position: absolute;
   left: 0;
@@ -357,11 +359,13 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
   visibility: hidden;
   text-shadow: 0 2px 28px rgba(0, 8, 40, 0.6), 0 0 18px rgba(150, 180, 255, 0.25);
 }
+.ly__duck { position: relative; transition: opacity 0.45s var(--ease); }
 .ly__in { position: relative; display: inline-block; transform-origin: 50% 55%; word-spacing: 0.1em; }
 .ly__ghost { position: absolute; left: 0; top: 0; color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.65); text-shadow: none; transform-origin: 50% 55%; }
 .ly__ghost .lc { opacity: 1 !important; transform: none !important; filter: none !important; }
 .lw { display: inline-block; white-space: nowrap; }
 .lc { display: inline-block; }
+.lsp { white-space: pre; }
 .ly--display { font-family: var(--f-display); font-stretch: 110%; font-weight: 760; letter-spacing: -0.02em; }
 .ly--serif { font-family: var(--f-serif); font-style: italic; font-weight: 400; letter-spacing: -0.005em; }
 .ly--again { font-weight: 900; font-stretch: 125%; letter-spacing: -0.035em; text-shadow: 0 0 40px rgba(255, 45, 85, 0.55), 0 0 100px rgba(106, 149, 255, 0.35), 0 4px 30px rgba(0, 8, 40, 0.6); }

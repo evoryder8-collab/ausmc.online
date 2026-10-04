@@ -1,0 +1,23 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//AusMC//Official Schedule 2026//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:AusMC 2026 · Judges’ & Competitors’ Voting
+X-WR-TIMEZONE:Australia/Sydney
+BEGIN:VEVENT
+UID:day-3-b0-s5@ausmc.online
+DTSTAMP:20261004T103700Z
+DTSTART:20261011T020000Z
+DTEND:20261011T023000Z
+SUMMARY:AusMC 2026 · Judges’ & Competitors’ Voting
+LOCATION:Cockatoo Island\, Sydney Harbour NSW
+DESCRIPTION:Official schedule: https://ausmc.online/#day-3
+URL:https://ausmc.online/#day-3
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Judges’ & Competitors’ Voting starts in 15 minutes
+TRIGGER:-PT15M
+END:VALARM
+END:VEVENT
+END:VCALENDAR

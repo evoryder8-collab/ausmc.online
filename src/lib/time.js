@@ -104,3 +104,26 @@ export function liveState(now = new Date()) {
   const next = isEventDay ? sessions.find((s) => s.start > now && sydneyDate(s.start) === today) : null;
   return { sessions, live, next, isEventDay, today };
 }
+
+// ───────────── Sydney ⇄ visitor time ─────────────
+export { localZone };
+
+/** switch every clock and schedule time between Sydney and the visitor's zone */
+export function setTzMode(mode) {
+  if (tzState.mode === mode) return;
+  tzState.mode = mode;
+  document.dispatchEvent(new CustomEvent('ausmc:tz', { detail: mode }));
+}
+
+/** UTC offset of a zone in minutes at a given instant */
+export function offsetMinutes(tz, date = new Date()) {
+  try {
+    const part = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' }).formatToParts(date).find((p) => p.type === 'timeZoneName')?.value || 'GMT';
+    const m = /GMT([+-])(\d{1,2})(?::(\d{2}))?/.exec(part);
+    return m ? (m[1] === '-' ? -1 : 1) * (+m[2] * 60 + +(m[3] || 0)) : 0;
+  } catch {
+    return -date.getTimezoneOffset();
+  }
+}
+
+export const zoneCity = (tz) => (tz || '').split('/').pop().replace(/_/g, ' ');

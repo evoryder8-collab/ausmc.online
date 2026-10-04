@@ -110,7 +110,7 @@ export class Fireworks {
         sfx,
         trail: [],
       });
-      if (sfx) this.sound?.fwLaunch({ dur: T, pan: (tx / W) * 2 - 1, gain: 0.05 + 0.03 * size });
+      if (sfx) this.sound?.fwLaunch({ dur: T, pan: (tx / W) * 2 - 1, gain: 0.026 + 0.012 * size });
       this.kick();
     };
     if (burstAt) {
@@ -180,7 +180,7 @@ export class Fireworks {
     this.flashes.push({ x, y, r: 260 * s * (0.8 + 0.4 * size), life: 0.5, max: 0.5, color: palette[0] });
     if (sfx && this.sound) {
       const pan = (x / this.W) * 2 - 1;
-      this.sound.fwBoom({ pan, size, gain: 0.32 + 0.12 * size });
+      this.sound.fwBoom({ pan, size, gain: 0.19 + 0.06 * size });
       if (type === 'crackle' || type === 'willow' || Math.random() < 0.25) this.sound.fwCrackle({ pan, delay: type === 'willow' ? 0.5 : 0.3, dur: type === 'willow' ? 1.8 : 1.1 });
     }
     this.kick();

@@ -235,36 +235,127 @@ class SoundEngine {
     this.route(sum, { pan, wet });
   }
 
-  /** ascending pentatonic tick for schedule rows landing */
-  tick(i = 0, { delay = 0, gain = 0.09 } = {}) {
+  /**
+   * Muted, rounded "pop": a very fast pitch drop through a lowpass, so it reads
+   * as a soft physical tap rather than a note. Used for rows landing and the
+   * gentler logo beats.
+   */
+  softPop({ delay = 0, pitch = 1, gain = 0.07, wet = 0.1, pan = 0 } = {}) {
     if (!this.live) return;
     const { ctx } = this;
     const t = this.now(delay);
-    const f = mtof(PENTA[i % PENTA.length] - 12);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1100 * pitch;
+    lp.Q.value = 0.3;
     const o = ctx.createOscillator();
-    o.type = 'triangle';
-    o.frequency.setValueAtTime(f * 1.02, t);
-    o.frequency.exponentialRampToValueAtTime(f, t + 0.03);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(420 * pitch, t);
+    o.frequency.exponentialRampToValueAtTime(110 * pitch, t + 0.05);
     const e = ctx.createGain();
     e.gain.setValueAtTime(0.0001, t);
     e.gain.linearRampToValueAtTime(gain, t + 0.003);
-    e.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
-    o.connect(e);
-    this.route(e, { wet: 0.28, pan: ((i % 5) - 2) * 0.12 });
+    e.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+    o.connect(e).connect(lp);
+    const n = this.noiseSrc(t, 0.03);
+    const nb = ctx.createBiquadFilter();
+    nb.type = 'lowpass';
+    nb.frequency.value = 1800;
+    nb.Q.value = 0.2;
+    const ne = ctx.createGain();
+    ne.gain.setValueAtTime(gain * 0.35, t);
+    ne.gain.exponentialRampToValueAtTime(0.0001, t + 0.018);
+    n.connect(nb).connect(ne).connect(lp);
+    this.route(lp, { wet, pan });
     o.start(t);
-    o.stop(t + 0.32);
-    // soft "landing" knock underneath
-    const k = ctx.createOscillator();
-    k.type = 'sine';
-    k.frequency.setValueAtTime(220, t);
-    k.frequency.exponentialRampToValueAtTime(90, t + 0.08);
-    const ke = ctx.createGain();
-    ke.gain.setValueAtTime(gain * 0.9, t);
-    ke.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-    k.connect(ke);
-    this.route(ke, { wet: 0.05 });
-    k.start(t);
-    k.stop(t + 0.14);
+    o.stop(t + 0.12);
+  }
+
+  /** schedule rows landing: muted pops with a touch of random variation */
+  tick(i = 0, { delay = 0 } = {}) {
+    this.softPop({ delay, pitch: 0.9 + Math.random() * 0.2, gain: 0.055, wet: 0.08, pan: ((i % 5) - 2) * 0.08 });
+  }
+
+  /** soft low thud (no click): a weighty landing without the sharp edge */
+  thud({ delay = 0, gain = 0.32, f0 = 120, f1 = 42, dur = 0.5 } = {}) {
+    if (!this.live) return;
+    const { ctx } = this;
+    const t = this.now(delay);
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + 0.09);
+    const e = ctx.createGain();
+    e.gain.setValueAtTime(0.0001, t);
+    e.gain.linearRampToValueAtTime(gain, t + 0.012);
+    e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 260;
+    o.connect(e).connect(lp);
+    this.route(lp, { wet: 0.08 });
+    o.start(t);
+    o.stop(t + dur + 0.05);
+    const n = this.noiseSrc(t, 0.2);
+    const nl = ctx.createBiquadFilter();
+    nl.type = 'lowpass';
+    nl.frequency.value = 500;
+    nl.Q.value = 0.2;
+    const ne = ctx.createGain();
+    ne.gain.setValueAtTime(gain * 0.4, t);
+    ne.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    n.connect(nl).connect(ne);
+    this.route(ne, { wet: 0.1 });
+  }
+
+  /** an airy, non-tonal puff (breath of filtered noise) */
+  puff({ delay = 0, gain = 0.05, dur = 0.5, f = 900 } = {}) {
+    if (!this.live) return;
+    const { ctx } = this;
+    const t = this.now(delay);
+    const n = this.noiseSrc(t, dur);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 0.5;
+    bp.frequency.setValueAtTime(f * 0.6, t);
+    bp.frequency.exponentialRampToValueAtTime(f, t + dur * 0.4);
+    const e = ctx.createGain();
+    e.gain.setValueAtTime(0.0001, t);
+    e.gain.linearRampToValueAtTime(gain, t + dur * 0.25);
+    e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    n.connect(bp).connect(e);
+    this.route(e, { wet: 0.35 });
+  }
+
+  /** the logo's final glow: a deep, soft bloom of air — no notes */
+  bloomSoft({ delay = 0, gain = 0.07 } = {}) {
+    if (!this.live) return;
+    const { ctx } = this;
+    const t = this.now(delay);
+    const n = this.noiseSrc(t, 2.4);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.Q.value = 0.2;
+    lp.frequency.setValueAtTime(300, t);
+    lp.frequency.exponentialRampToValueAtTime(1400, t + 0.5);
+    lp.frequency.exponentialRampToValueAtTime(400, t + 2.2);
+    const e = ctx.createGain();
+    e.gain.setValueAtTime(0.0001, t);
+    e.gain.linearRampToValueAtTime(gain, t + 0.35);
+    e.gain.exponentialRampToValueAtTime(0.0001, t + 2.3);
+    n.connect(lp).connect(e);
+    this.route(e, { wet: 0.5 });
+    const air = this.noiseSrc(t, 1.8);
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 6500;
+    const ae = ctx.createGain();
+    ae.gain.setValueAtTime(0.0001, t);
+    ae.gain.linearRampToValueAtTime(gain * 0.25, t + 0.4);
+    ae.gain.exponentialRampToValueAtTime(0.0001, t + 1.7);
+    air.connect(hp).connect(ae);
+    this.route(ae, { wet: 0.5 });
+    this.thud({ delay, gain: gain * 2.2, f0: 90, f1: 38, dur: 1.2 });
   }
 
   starNote(i, opts = {}) {
@@ -405,91 +496,64 @@ class SoundEngine {
 
   // ───────────────────────── fireworks ─────────────────────────
 
-  /** rising hiss of a shell climbing; sometimes with a whistle */
-  fwLaunch({ dur = 1.2, pan = 0, gain = 0.07 } = {}) {
+  /** soft rising hiss of a shell climbing (broad filter, no whistle) */
+  fwLaunch({ dur = 1.2, pan = 0, gain = 0.035 } = {}) {
     if (!this.live) return;
     const { ctx } = this;
     const t = this.now();
     const n = this.noiseSrc(t, dur);
     const bp = ctx.createBiquadFilter();
     bp.type = 'bandpass';
-    bp.Q.value = 1.6;
-    bp.frequency.setValueAtTime(500, t);
-    bp.frequency.exponentialRampToValueAtTime(2600, t + dur * 0.85);
+    bp.Q.value = 0.45;
+    bp.frequency.setValueAtTime(380, t);
+    bp.frequency.exponentialRampToValueAtTime(1500, t + dur * 0.85);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 3200;
     const e = ctx.createGain();
     e.gain.setValueAtTime(0.0001, t);
-    e.gain.linearRampToValueAtTime(gain, t + 0.08);
-    e.gain.exponentialRampToValueAtTime(gain * 0.25, t + dur * 0.8);
+    e.gain.linearRampToValueAtTime(gain, t + 0.1);
+    e.gain.exponentialRampToValueAtTime(gain * 0.3, t + dur * 0.8);
     e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    n.connect(bp).connect(e);
-    this.route(e, { pan, wet: 0.35 });
-    if (Math.random() < 0.3) {
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(950, t);
-      o.frequency.exponentialRampToValueAtTime(2300, t + dur * 0.9);
-      const vib = ctx.createOscillator();
-      vib.frequency.value = 22;
-      const va = ctx.createGain();
-      va.gain.value = 18;
-      vib.connect(va).connect(o.frequency);
-      const oe = ctx.createGain();
-      oe.gain.setValueAtTime(0.0001, t);
-      oe.gain.linearRampToValueAtTime(0.022, t + 0.12);
-      oe.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(oe);
-      this.route(oe, { pan, wet: 0.4 });
-      o.start(t);
-      vib.start(t);
-      o.stop(t + dur + 0.05);
-      vib.stop(t + dur + 0.05);
-    }
+    n.connect(bp).connect(lp).connect(e);
+    this.route(e, { pan, wet: 0.15 });
   }
 
-  /** the burst itself: sub thump + rolling body + air crack */
-  fwBoom({ pan = 0, size = 1, gain = 0.5 } = {}) {
+  /** the burst: a short, dull thump of air — no ringing sweep */
+  fwBoom({ pan = 0, size = 1, gain = 0.26 } = {}) {
     if (!this.live) return;
     const { ctx } = this;
     const t = this.now();
-    const g = gain * (0.6 + 0.4 * size);
+    const g = gain * (0.7 + 0.3 * size);
     const o = ctx.createOscillator();
     o.type = 'sine';
-    o.frequency.setValueAtTime(95, t);
-    o.frequency.exponentialRampToValueAtTime(32, t + 0.45);
+    o.frequency.setValueAtTime(75, t);
+    o.frequency.exponentialRampToValueAtTime(34, t + 0.1);
     const oe = ctx.createGain();
     oe.gain.setValueAtTime(0.0001, t);
-    oe.gain.linearRampToValueAtTime(g, t + 0.008);
-    oe.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+    oe.gain.linearRampToValueAtTime(g * 0.8, t + 0.01);
+    oe.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
     o.connect(oe);
-    this.route(oe, { pan: pan * 0.5, wet: 0.25 });
+    this.route(oe, { pan: pan * 0.4, wet: 0.06 });
     o.start(t);
-    o.stop(t + 1.2);
+    o.stop(t + 0.6);
 
-    const n = this.noiseSrc(t, 2.2);
+    const n = this.noiseSrc(t, 1.6);
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(1400, t);
-    lp.frequency.exponentialRampToValueAtTime(180, t + 1.6);
+    lp.Q.value = 0.15;
+    lp.frequency.setValueAtTime(800, t);
+    lp.frequency.exponentialRampToValueAtTime(140, t + 1.1);
     const ne = ctx.createGain();
     ne.gain.setValueAtTime(0.0001, t);
-    ne.gain.linearRampToValueAtTime(g * 0.9, t + 0.006);
-    ne.gain.exponentialRampToValueAtTime(0.0001, t + 2.0);
+    ne.gain.linearRampToValueAtTime(g * 0.75, t + 0.008);
+    ne.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
     n.connect(lp).connect(ne);
-    this.route(ne, { pan, wet: 0.55 });
-
-    const c = this.noiseSrc(t, 0.06);
-    const hp = ctx.createBiquadFilter();
-    hp.type = 'highpass';
-    hp.frequency.value = 2400;
-    const ce = ctx.createGain();
-    ce.gain.setValueAtTime(g * 0.5, t);
-    ce.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
-    c.connect(hp).connect(ce);
-    this.route(ce, { pan, wet: 0.3 });
+    this.route(ne, { pan, wet: 0.2 });
   }
 
-  /** glittering crackle tail (one procedurally generated buffer per call) */
-  fwCrackle({ pan = 0, delay = 0.35, dur = 1.1, density = 60, gain = 0.16 } = {}) {
+  /** a soft glitter tail (one generated buffer per call) */
+  fwCrackle({ pan = 0, delay = 0.35, dur = 1.1, density = 45, gain = 0.06 } = {}) {
     if (!this.live) return;
     const { ctx } = this;
     const t = this.now(delay);
@@ -500,19 +564,20 @@ class SoundEngine {
     for (let k = 0; k < pops; k++) {
       const at = Math.floor(Math.pow(Math.random(), 0.8) * (len - 400));
       const amp = 0.3 + Math.random() * 0.7;
-      const decay = 30 + Math.random() * 120;
+      const decay = 20 + Math.random() * 60;
       for (let i = 0; i < 400; i++) d[at + i] += (Math.random() * 2 - 1) * amp * Math.exp(-i / decay);
     }
     const s = ctx.createBufferSource();
     s.buffer = buf;
-    const hp = ctx.createBiquadFilter();
-    hp.type = 'highpass';
-    hp.frequency.value = 1800;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 3800;
+    bp.Q.value = 0.35;
     const e = ctx.createGain();
     e.gain.setValueAtTime(gain, t);
     e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(hp).connect(e);
-    this.route(e, { pan, wet: 0.5 });
+    s.connect(bp).connect(e);
+    this.route(e, { pan, wet: 0.18 });
     s.start(t);
   }
 

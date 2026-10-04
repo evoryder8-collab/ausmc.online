@@ -19,8 +19,8 @@ loop() { # in out_basename D X fps crf1080 crf720
   ffmpeg -v error -y -ss 0.5 -i "$OUT/$name-720.mp4" -frames:v 1 -q:v 4 "$OUT/$name-poster.jpg"
 }
 
-loop "$SRC/sydney-at-night-for header.mov" header 12.8 3.2 30
-loop "$SRC/aerial-video-of-sydney-city-and-sydney-harbor- for footer.mov" footer 21.0 4.0 30 30 30
+loop "$SRC/sydney-at-night-for header.mov" skyline 12.8 3.2 30
+loop "$SRC/aerial-video-of-sydney-city-and-sydney-harbor- for footer.mov" harbour 21.0 4.0 30 30 30
 
 for spec in "1920:1080:22" "1280:720:23"; do
   IFS=: read -r w h crf <<<"$spec"

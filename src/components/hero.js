@@ -1,7 +1,9 @@
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { spring } from '../lib/spring.js';
-import { eventStart, eventEnd, liveState, timeText, SYD } from '../lib/time.js';
+import { eventStart, eventEnd, liveState, timeText, SYD, tzState, setTzMode, localZone, localDiffers, offsetMinutes, zoneCity } from '../lib/time.js';
+import { nearestPlace } from '../lib/places.js';
+import { sound } from '../lib/audio.js';
 import { DEPTH } from './logo.js';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -89,13 +91,75 @@ function buildCountdown(root) {
   addEventListener('resize', () => Object.values(reels).flat().forEach((r) => r.refresh()));
   document.fonts?.ready.then(() => Object.values(reels).flat().forEach((r) => r.refresh()));
 
-  const clockFmt = new Intl.DateTimeFormat('en-AU', { timeZone: SYD, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZoneName: 'short' });
+  const mk = (tz, o) => new Intl.DateTimeFormat('en-AU', tz ? { ...o, timeZone: tz } : o);
+  const CLOCK = { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZoneName: 'short' };
+  const sydClock = mk(SYD, CLOCK);
+  const localClock = mk(undefined, CLOCK);
+  const sydShort = mk(SYD, { hour: 'numeric', minute: '2-digit', hour12: true });
+  const localStart = mk(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
+  const up = (str) => str.replace(/\b(am|pm)\b/g, (m) => m.toUpperCase());
+  const whereEl = root.querySelector('.countdown__where');
+  const altEl = root.querySelector('.countdown__alt');
+  const localBtn = root.querySelector('.local-btn');
+  const localLabel = localBtn?.querySelector('span:last-child');
+  const lg = label.querySelector('.lg');
+  const sm = label.querySelector('.sm');
+  const LG = lg?.textContent;
+  const SM = sm?.textContent;
+  let placeName = '';
   let mode = '';
+
+  const applyZone = () => {
+    const local = tzState.mode === 'local';
+    root.classList.toggle('is-localtime', local);
+    if (whereEl) whereEl.textContent = local ? `Your time${placeName ? ` · ${placeName}` : ''}` : 'Sydney now';
+    if (localLabel) localLabel.textContent = local ? 'Back to Sydney time' : 'Check your local time';
+    if (lg && sm) {
+      const when = up(localStart.format(eventStart));
+      lg.textContent = local ? `Day 1 begins ${when} your time` : LG;
+      sm.textContent = local ? `Day 1 · ${when} your time` : SM;
+    }
+    if (altEl) altEl.hidden = !local;
+  };
+  document.addEventListener('ausmc:tz', applyZone);
+
+  const locate = () => new Promise((res) => {
+    if (!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition((p) => res(p.coords), () => res(null), { enableHighAccuracy: false, timeout: 9000, maximumAge: 6 * 3600 * 1000 });
+  });
+
+  localBtn?.addEventListener('click', async () => {
+    sound.tap();
+    if (tzState.mode === 'local') return setTzMode('sydney');
+    if (!localDiffers) {
+      localLabel.textContent = 'You’re already on Sydney time';
+      setTimeout(applyZone, 2600);
+      return;
+    }
+    localBtn.classList.add('is-busy');
+    localLabel.textContent = 'Finding your time…';
+    // the browser asks for location; coordinates never leave the device
+    const coords = await locate();
+    const myOffset = offsetMinutes(localZone);
+    const near = coords && nearestPlace(coords, (tz) => offsetMinutes(tz) === myOffset);
+    placeName = near ? near.name : zoneCity(localZone);
+    localBtn.classList.remove('is-busy');
+    setTzMode('local');
+    applyZone();
+    gsap.fromTo(root.querySelectorAll('.countdown__clock, .countdown__alt, .countdown__label'), { opacity: 0, y: 6, filter: 'blur(4px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7, stagger: 0.06, ease: spring({ bounce: 0.25 }) });
+  });
   let lastSec = -1;
 
   const render = (animate = true) => {
     const now = new Date();
-    if (nowEl) nowEl.textContent = clockFmt.format(now).replace(/\b(am|pm)\b/g, (m) => m.toUpperCase());
+    const local = tzState.mode === 'local';
+    if (nowEl) nowEl.textContent = up((local ? localClock : sydClock).format(now));
+    if (local && altEl) {
+      const diff = (offsetMinutes(SYD, now) - offsetMinutes(localZone, now)) / 60;
+      const h = Math.abs(diff);
+      const hTxt = `${Number.isInteger(h) ? h : h.toFixed(1)} h`;
+      altEl.textContent = `Sydney ${up(sydShort.format(now))} · ${diff === 0 ? 'same time as you' : `Sydney is ${hTxt} ${diff > 0 ? 'ahead of' : 'behind'} you`}`;
+    }
     if (now < eventStart) {
       if (mode !== 'pre') {
         mode = 'pre';

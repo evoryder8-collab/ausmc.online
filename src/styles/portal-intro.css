@@ -200,6 +200,8 @@
   transition: color 0.3s, background 0.3s;
 }
 .intro__skip:hover { color: #fff; background: rgba(255, 255, 255, 0.12); }
+.intro__skip { opacity: 0; pointer-events: none; translate: 0 8px; transition: opacity 0.8s var(--ease), translate 0.8s var(--ease), color 0.3s, background 0.3s; }
+.intro__skip.is-shown { opacity: 1; pointer-events: auto; translate: 0 0; }
 
 /* the arrival: plane footage */
 .intro__film { position: absolute; inset: 0; opacity: 0; background: #000; overflow: hidden; }

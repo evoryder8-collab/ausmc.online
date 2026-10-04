@@ -1,0 +1,26 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//AusMC//Official Schedule 2026//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:AusMC 2026 · Awards Ceremony
+X-WR-TIMEZONE:Australia/Sydney
+BEGIN:VEVENT
+UID:day-3-b0-s7@ausmc.online
+DTSTAMP:20261004T103700Z
+DTSTART:20261011T033000Z
+DTEND:20261011T053000Z
+SUMMARY:AusMC 2026 · Awards Ceremony
+LOCATION:Cockatoo Island\, Sydney Harbour NSW
+DESCRIPTION:Presentation of awards to sponsors\, judges\, category winners\
+ , and special award recipients\, including the Overall Australian Massage 
+ Championship 2026 Champion.\nOfficial schedule: https://ausmc.online/#day-
+ 3
+URL:https://ausmc.online/#day-3
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Awards Ceremony starts in 15 minutes
+TRIGGER:-PT15M
+END:VALARM
+END:VEVENT
+END:VCALENDAR

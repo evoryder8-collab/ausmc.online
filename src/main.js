@@ -105,8 +105,8 @@ gsap.set('#nav', { opacity: 0, y: -90 });
 
 // ───────────── footage, fireworks, soundtrack, lyrics ─────────────
 const film = createFilm(document.querySelector('.intro__video'));
-const header = createLoop(document.querySelector('.hero__video'), 'header');
-createLoop(document.querySelector('.footer__video'), 'footer', { lazy: true });
+const header = createLoop(document.querySelector('.hero__video'), 'harbour');
+createLoop(document.querySelector('.footer__video'), 'skyline', { lazy: true });
 const fireworks = new Fireworks(document.querySelector('.hero__fireworks'), { sound, reduced });
 const lyrics = createLyrics(document.querySelector('.lyrics'), { onCue: syncFireworks });
 const song = createSong({ onStart: () => lyrics.play(), onPause: () => lyrics.pause() });
@@ -116,7 +116,7 @@ if (import.meta.env.DEV) Object.assign(window.__ausmc, { song, film, fireworks, 
 
 /** land the big shells exactly on the song's emphasis beats */
 function syncFireworks(m, ms) {
-  if (!fireworks.active || reduced) return;
+  if (!revealed || !fireworks.active || reduced) return;
   const at = performance.now() + ms;
   const { W, H } = fireworks;
   fireworks.nextAuto = Math.max(fireworks.nextAuto, at + 900);
@@ -226,10 +226,10 @@ async function begin(withSound, btn) {
   fx.burst(r.left + r.width / 2, r.top + r.height / 2, { count: withSound ? 36 : 16, speed: [120, 480], life: [0.4, 0.9], colors: ['white', 'ice', 'blue', 'red'], gravity: 120 });
 
   await gsap.timeline()
-    .to(btn, { scale: 0.92, duration: 0.09, ease: 'power2.out' })
-    .to(btn, { scale: 1, duration: 0.6, ease: spring({ bounce: 0.5 }) })
-    .to(card, { scale: 1.08, opacity: 0, filter: 'blur(18px)', duration: 0.7, ease: 'power2.in' }, 0.12)
-    .to(portal, { opacity: 0, duration: 0.6, ease: 'power1.inOut' }, 0.35);
+    .to(btn, { scale: 0.92, duration: 0.08, ease: 'power2.out' })
+    .to(btn, { scale: 1, duration: 0.45, ease: spring({ bounce: 0.5 }) })
+    .to(card, { scale: 1.08, opacity: 0, filter: 'blur(18px)', duration: 0.45, ease: 'power2.in' }, 0.08)
+    .to(portal, { opacity: 0, duration: 0.4, ease: 'power1.inOut' }, 0.2);
   portal.remove();
 
   await logo.ready;
@@ -240,6 +240,9 @@ async function begin(withSound, btn) {
 }
 
 // ───────────── 2b · through the badge, into the sky: the arrival ─────────────
+const SONG_AT = 0.2; // the soundtrack enters 20% into the plane footage
+const SKIP_AFTER = 10; // seconds into the footage before "Skip intro" appears
+
 async function playFilm(withSound) {
   const filmEl = intro.querySelector('.intro__film');
   const dest = filmEl.querySelector('.intro__dest');
@@ -248,6 +251,7 @@ async function playFilm(withSound) {
   await film.ready(4500);
 
   let finish;
+  let over = false;
   const done = new Promise((res) => (finish = res));
   const onSkip = () => { sound.tap(); finish('skip'); };
   const onKey = (e) => e.key === 'Escape' && onSkip();
@@ -255,32 +259,49 @@ async function playFilm(withSound) {
   addEventListener('keydown', onKey);
   v.addEventListener('ended', () => finish('ended'), { once: true });
 
-  // a soft riser in the plane's quiet tail, cresting as the song arrives
-  let rose = false;
-  const onTime = () => {
-    if (!rose && v.duration && v.currentTime >= v.duration - 2.5) {
-      rose = true;
-      sound.swell({ dur: 2.3, gain: 0.07 });
+  // frame-accurate watch of the footage: song entry + skip button
+  let songIn = false;
+  let skipShown = false;
+  const check = () => {
+    const d = v.duration;
+    if (d && !songIn && v.currentTime >= d * SONG_AT) {
+      songIn = true;
+      if (sound.enabled) {
+        lyrics.setCinema(true); // the opening lines play over the arrival
+        startSong();
+      }
+    }
+    if (!skipShown && v.currentTime >= SKIP_AFTER) {
+      skipShown = true;
+      skipBtn.classList.add('is-shown');
     }
   };
-  v.addEventListener('timeupdate', onTime);
+  const watch = () => {
+    if (over) return;
+    check();
+    requestAnimationFrame(watch);
+  };
+  requestAnimationFrame(watch);
+  v.addEventListener('timeupdate', check); // backup when frames are throttled
 
   const tl = gsap.timeline();
-  tl.call(() => sound.whoosh({ dur: 1.1, f0: 240, f1: 3600, gain: 0.24, pan0: 0, pan1: 0, wet: 0.45 }), null, 0);
-  tl.to(logo.float, { scale: 3.4, opacity: 0, filter: 'blur(18px)', duration: 1.05, ease: 'power3.in' }, 0);
-  tl.to(['.intro__caption', '.intro__rays'], { opacity: 0, y: -24, duration: 0.55, ease: 'power2.in' }, 0);
-  tl.call(() => film.play(withSound), null, 0.55);
-  tl.fromTo(filmEl, { opacity: 0, scale: 1.14 }, { opacity: 1, scale: 1, duration: 1.6, ease: 'power3.out' }, 0.5);
-  tl.fromTo(dest.children, { opacity: 0, y: 24, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.4, stagger: 0.18, ease: 'expo.out' }, 0.55 + 4.4);
-  tl.to(dest, { opacity: 0, y: -14, filter: 'blur(8px)', duration: 1.2, ease: 'power2.in' }, 0.55 + 10.2);
+  tl.call(() => sound.whoosh({ dur: 0.7, f0: 220, f1: 1600, gain: 0.09, pan0: 0, pan1: 0, wet: 0.35 }), null, 0);
+  tl.to(logo.float, { scale: 3.4, opacity: 0, filter: 'blur(18px)', duration: 0.7, ease: 'power3.in' }, 0);
+  tl.to(['.intro__caption', '.intro__rays'], { opacity: 0, y: -24, duration: 0.4, ease: 'power2.in' }, 0);
+  tl.to(fx.c, { opacity: 0, duration: 0.3, onComplete: () => { fx.clear(); gsap.set(fx.c, { opacity: 1 }); } }, 0.1);
+  tl.call(() => film.play(withSound), null, 0.35);
+  tl.fromTo(filmEl, { opacity: 0, scale: 1.14 }, { opacity: 1, scale: 1, duration: 1.4, ease: 'power3.out' }, 0.3);
+  tl.fromTo(dest.children, { opacity: 0, y: 24, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.4, stagger: 0.18, ease: 'expo.out' }, 0.35 + 4.4);
+  tl.to(dest, { opacity: 0, y: -14, filter: 'blur(8px)', duration: 1.2, ease: 'power2.in' }, 0.35 + 10.2);
 
   // safety net if the video never reports "ended"
   const guard = setTimeout(() => finish('timeout'), ((v.duration || 15) + 4) * 1000);
   const how = await done;
+  over = true;
+  v.removeEventListener('timeupdate', check);
   clearTimeout(guard);
   skipBtn.removeEventListener('click', onSkip);
   removeEventListener('keydown', onKey);
-  v.removeEventListener('timeupdate', onTime);
   if (how === 'skip') {
     tl.progress(1, true);
     film.stop();
@@ -296,8 +317,9 @@ async function revealPage() {
   slot.appendChild(logo.root);
   revealed = true;
 
-  // the soundtrack lands right on the last frame of the arrival
-  if (sound.enabled) startSong();
+  // (normally already playing since 20% into the arrival)
+  lyrics.setCinema(false);
+  if (sound.enabled && !song.playing) startSong();
   header.play();
 
   const tl = gsap.timeline();

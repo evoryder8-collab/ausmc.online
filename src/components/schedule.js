@@ -1,7 +1,8 @@
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { DAYS, EVENT } from '../data/schedule.js';
-import { at, timeParts, dayShiftLabel, tzState, localDiffers, localZoneLabel, liveState } from '../lib/time.js';
+import { at, timeParts, dayShiftLabel, tzState, localDiffers, localZoneLabel, liveState, setTzMode, SYD } from '../lib/time.js';
+import { calendarEntries, googleUrl, outlookUrl, FULL_ICS } from '../lib/calendar.js';
 import { icon } from '../lib/icons.js';
 import { flag } from '../lib/flags.js';
 import { spring } from '../lib/spring.js';
@@ -17,6 +18,8 @@ const t = (date, hm) => {
   const { hm: h, ap } = timeParts(d);
   return `<time class="tm" datetime="${d.toISOString()}" data-ts="${d.getTime()}"><span class="tm__hm">${h}</span><span class="tm__ap">${ap}</span></time>`;
 };
+const remind = (key, title) =>
+  `<button type="button" class="remind" data-remind="${key}" aria-label="Add a calendar reminder: ${esc(title)}" title="Add to calendar">${icon('bell')}<span class="remind__done" aria-hidden="true">${icon('bellring')}</span></button>`;
 const range = (date, a, b) => `${t(date, a)}<span class="tm__sep">–</span>${t(date, b)}`;
 const shiftTag = (date, hm) => `<span class="tm__shift" data-shift="${at(date, hm).getTime()}"></span>`;
 
@@ -29,9 +32,9 @@ function renderMasterclass(day, block, bi) {
       <div class="block__time pill">${icon('clock')}${range(day.date, block.start, block.end)}${shiftTag(day.date, block.start)}</div>
       <span class="status" aria-live="polite"></span>
     </header>
-    <div class="cols-head" aria-hidden="true"><span>Presenter</span><span>Masterclass</span></div>
+    <div class="cols-head" aria-hidden="true"><span>Presenter</span><span>Masterclass</span><span></span></div>
     <ol class="rows">
-      ${block.sessions.map((s) => `
+      ${block.sessions.map((s, pi) => `
       <li class="row row--presenter">
         <div class="presenter">
           <div class="presenter__line"><span class="presenter__name">${esc(s.presenter)}</span>${flag(s.country)}</div>
@@ -39,6 +42,7 @@ function renderMasterclass(day, block, bi) {
         </div>
         <div class="row__glyph" aria-hidden="true"></div>
         <div class="class-title">${esc(s.title)}</div>
+        <div class="row__act">${remind(`${key}-p${pi}`, s.title)}</div>
       </li>`).join('')}
     </ol>
   </article>`;
@@ -57,6 +61,7 @@ function renderOnline(day, block, bi) {
         <span class="row__name">${esc(s.title)}</span>
         <span class="row__times">${range(day.date, s.start, s.end)}${shiftTag(day.date, s.start)}</span>
         <span class="status"></span>
+        <span class="row__act">${remind(`${day.id}-b${bi}-s${si}`, `${block.title} ${s.title}`)}</span>
       </li>`).join('')}
     </ol>
   </article>`;
@@ -74,7 +79,6 @@ function renderProgram(day, block, bi) {
       ${block.sessions.map((s, si) => {
         const showEnd = s.end && !s.openEnded;
         const kind = s.kind || 'session';
-        const round = /Round (\d)/.exec(s.title);
         return `
       <li class="row row--session kind-${kind}" data-key="${day.id}-b${bi}-s${si}">
         <div class="row__time">
@@ -88,7 +92,7 @@ function renderProgram(day, block, bi) {
           ${s.desc ? `<p class="row__desc">${esc(s.desc)}</p>` : ''}
           ${s.address ? `<p class="row__addr">${icon('pin')}<span>${esc(s.address)}</span> <button type="button" class="link-btn" data-goto-location="${s.location}">Show on map ${icon('external')}</button></p>` : ''}
         </div>
-        <div class="row__icon" aria-hidden="true">${round ? `<span class="round">R${round[1]}</span>` : icon(kind === 'competition' ? 'competition' : kind)}</div>
+        <div class="row__act">${remind(`${day.id}-b${bi}-s${si}`, s.title)}</div>
       </li>`;
       }).join('')}
     </ol>
@@ -206,12 +210,14 @@ export function initSchedule({ lenis, reduced, glass }) {
       const b = e.target.closest('[data-tz]');
       if (!b || b.dataset.tz === tzState.mode) return;
       sound.tap();
-      tzState.mode = b.dataset.tz;
-      tz.querySelectorAll('[data-tz]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-      refreshTimes(true);
-      writeNote();
+      setTzMode(b.dataset.tz);
     });
   }
+  document.addEventListener('ausmc:tz', () => {
+    tz.querySelectorAll('[data-tz]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.tz === tzState.mode)));
+    refreshTimes(true);
+    writeNote();
+  });
 
   function refreshTimes(animate) {
     const els = document.querySelectorAll('.tm[data-ts]');
@@ -247,6 +253,7 @@ export function initSchedule({ lenis, reduced, glass }) {
 
   setupLanding({ reduced });
   setupLive({ lenis });
+  setupReminders();
 
   // the sticky day switcher bows out as the schedule ends
   gsap.fromTo('.daynav', { opacity: 1, y: 0 }, {
@@ -413,4 +420,103 @@ function setupLive({ lenis }) {
 
 function sessionDayIs(s, today) {
   return DAYS.find((d) => d.id === s.dayId)?.date === today;
+}
+
+// ───────────── reminders: add any entry to the visitor's calendar ─────────────
+const BASE = import.meta.env.BASE_URL;
+const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const STORE = 'ausmc:reminders';
+const icsUrl = (name) => new URL(`${BASE}ics/${name}.ics`, location.href).href;
+
+function setupReminders() {
+  const entries = Object.fromEntries(calendarEntries().map((e) => [e.key, e]));
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem(STORE) || '[]'); } catch { /* private mode */ }
+  const markSet = (key) => {
+    document.querySelectorAll(`[data-remind="${key}"]`).forEach((b) => {
+      b.classList.add('is-set');
+      b.title = 'Added to your calendar';
+    });
+    if (!saved.includes(key)) saved.push(key);
+    try { localStorage.setItem(STORE, JSON.stringify(saved)); } catch { /* ignore */ }
+  };
+  saved.forEach((k) => document.querySelectorAll(`[data-remind="${k}"]`).forEach((b) => b.classList.add('is-set')));
+
+  const when = (d) => new Intl.DateTimeFormat('en-AU', { timeZone: tzState.mode === 'sydney' ? SYD : undefined, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })
+    .format(d).replace(/\b(am|pm)\b/g, (m) => m.toUpperCase());
+
+  const menu = document.createElement('div');
+  menu.className = 'remind-menu glass';
+  menu.hidden = true;
+  menu.setAttribute('role', 'menu');
+  menu.innerHTML = `
+    <p class="remind-menu__title"></p>
+    <p class="remind-menu__time"></p>
+    <button type="button" role="menuitem" data-cal="apple">${icon('calendar')}<span>Apple Calendar · iPhone · Mac</span></button>
+    <button type="button" role="menuitem" data-cal="google">${icon('calendar')}<span>Google Calendar</span></button>
+    <button type="button" role="menuitem" data-cal="outlook">${icon('calendar')}<span>Outlook</span></button>
+    <p class="remind-menu__note">${icon('bell')} Includes an alert 15 minutes before.</p>`;
+  document.body.appendChild(menu);
+  let current = null;
+
+  const close = () => {
+    if (menu.hidden) return;
+    gsap.to(menu, { opacity: 0, y: -6, scale: 0.97, duration: 0.18, ease: 'power2.in', onComplete: () => (menu.hidden = true) });
+    current = null;
+  };
+  const open = (btn, e) => {
+    current = { btn, e };
+    menu.querySelector('.remind-menu__title').textContent = e.short;
+    menu.querySelector('.remind-menu__time').textContent = `${when(e.start)} · ${tzState.mode === 'sydney' ? 'Sydney time' : 'your time'}`;
+    menu.hidden = false;
+    const r = btn.getBoundingClientRect();
+    const mw = menu.offsetWidth;
+    const mh = menu.offsetHeight;
+    const left = Math.min(Math.max(12, r.right - mw), innerWidth - mw - 12);
+    const below = r.bottom + 10 + mh < innerHeight;
+    menu.style.left = `${left}px`;
+    menu.style.top = `${below ? r.bottom + 10 : r.top - mh - 10}px`;
+    menu.style.transformOrigin = `${r.left + r.width / 2 - left}px ${below ? 0 : mh}px`;
+    gsap.fromTo(menu, { opacity: 0, y: below ? -8 : 8, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: spring({ bounce: 0.3 }) });
+    menu.querySelector('button').focus({ preventScroll: true });
+  };
+
+  const add = (kind, key, e) => {
+    if (kind === 'apple') location.href = icsUrl(key);
+    else window.open(kind === 'google' ? googleUrl(e) : outlookUrl(e), '_blank', 'noopener');
+    markSet(key);
+    const b = document.querySelector(`[data-remind="${key}"]`);
+    if (b) gsap.fromTo(b, { scale: 0.8 }, { scale: 1, duration: 0.6, ease: spring({ bounce: 0.55 }) });
+    sound.softPop({ pitch: 1.15, gain: 0.07 });
+  };
+
+  document.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-remind]');
+    if (b) {
+      ev.stopPropagation();
+      const key = b.dataset.remind;
+      const e = entries[key];
+      if (!e) return;
+      sound.softPop({ gain: 0.06 });
+      // iPhone / iPad: one tap straight into the native "Add to Calendar" sheet
+      if (IOS) return add('apple', key, e);
+      if (current?.btn === b) return close();
+      return open(b, e);
+    }
+    const choice = ev.target.closest('[data-cal]');
+    if (choice && current) {
+      add(choice.dataset.cal, current.btn.dataset.remind, current.e);
+      return close();
+    }
+    if (!ev.target.closest('.remind-menu')) close();
+  });
+  addEventListener('keydown', (ev) => ev.key === 'Escape' && close());
+  addEventListener('scroll', close, { passive: true });
+
+  // the whole schedule in one go
+  const full = document.querySelector('.full-cal');
+  full?.addEventListener('click', () => {
+    sound.softPop({ gain: 0.06 });
+    location.href = icsUrl(FULL_ICS);
+  });
 }

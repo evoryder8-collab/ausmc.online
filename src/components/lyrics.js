@@ -17,6 +17,10 @@ const AVOID = [
   '.footer__mark', '.footer__line', '.footer__small', '.footer__top', '.live-toast', '.schedule__note',
 ].join(',');
 
+// while the opening plays over the plane footage only the arrival title matters
+const AVOID_CINEMA = '.intro__dest strong, .intro__dest span, .intro__dest small, .intro__skip.is-shown';
+let cinema = false;
+
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -64,6 +68,8 @@ const META = CUES.map((c, i) => {
 function buildDom(text, b) {
   const el = document.createElement('div');
   el.className = `ly ly--${b}${FONT.serif.includes(b) ? ' ly--serif' : ' ly--display'}`;
+  const duck = document.createElement('div');
+  duck.className = 'ly__duck';
   const inner = document.createElement('div');
   inner.className = 'ly__in';
   const words = [];
@@ -81,9 +87,18 @@ function buildDom(text, b) {
     }
     inner.appendChild(ws);
     words.push(ws);
-    if (wi < arr.length - 1) inner.appendChild(document.createTextNode(' '));
+    // spaces are elements, not bare text nodes: GSAP briefly re-parents
+    // detached nodes to measure transforms and re-inserts them before the next
+    // *element*, which would otherwise hop each word over its own space
+    if (wi < arr.length - 1) {
+      const sp = document.createElement('span');
+      sp.className = 'lsp';
+      sp.textContent = ' ';
+      inner.appendChild(sp);
+    }
   });
-  el.appendChild(inner);
+  duck.appendChild(inner);
+  el.appendChild(duck);
   return { el, inner, words, chars, word: (k) => words.find((w) => w.dataset.w === k) };
 }
 
@@ -171,14 +186,14 @@ function build(m, base) {
         for (let k = 0; k < 3; k++) {
           const g = inner.cloneNode(true);
           g.className = 'ly__ghost';
-          el.appendChild(g);
+          inner.parentNode.appendChild(g);
           const start = 0.25 + k * Math.max(0.6, (dur - 1.5) / 3);
           tl.fromTo(g, { opacity: 0.55, scale: 1 }, { opacity: 0, scale: 1.9, duration: 2.6, ease: 'power2.out' }, start);
         }
       } else {
         const g = inner.cloneNode(true);
         g.className = 'ly__ghost';
-        el.appendChild(g);
+        inner.parentNode.appendChild(g);
         tl.fromTo(g, { opacity: 0.6, scale: 1 }, { opacity: 0, scale: 1.7, duration: 0.9, ease: 'power2.out' }, 0.04);
       }
       tl.to(inner, { opacity: 0, scale: '+=0.18', filter: 'blur(14px)', duration: R, ease: 'power2.in' }, exitAt);
@@ -453,8 +468,8 @@ function place(el, pref, occupied, lastPos) {
   const vw = innerWidth;
   const vh = innerHeight;
   const pad = vw < 720 ? 12 : 28;
-  const nav = document.querySelector('.nav__pill')?.getBoundingClientRect();
-  const top = (nav ? nav.bottom : 70) + 10;
+  const nav = cinema ? null : document.querySelector('.nav__pill')?.getBoundingClientRect();
+  const top = cinema ? Math.max(24, vh * 0.08) : (nav ? nav.bottom : 70) + 10;
   const reach = +el.dataset.reach || 0;
   let w = el.offsetWidth + reach;
   let h = el.offsetHeight;
@@ -465,7 +480,7 @@ function place(el, pref, occupied, lastPos) {
     w = el.offsetWidth + reach * f;
     h = el.offsetHeight;
   }
-  const avoid = [...document.querySelectorAll(AVOID)]
+  const avoid = [...document.querySelectorAll(cinema ? AVOID_CINEMA : AVOID)]
     .map((n) => n.getBoundingClientRect())
     .filter((r) => r.width > 0 && r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw)
     .map((r) => ({ left: r.left - 12, right: r.right + 12, top: r.top - 10, bottom: r.bottom + 10 }));
@@ -497,6 +512,8 @@ function place(el, pref, occupied, lastPos) {
   el.style.top = `${best.y}px`;
   return { x: best.cx, y: best.cy, rect: { left: best.x, top: best.y, right: best.x + w, bottom: best.y + h } };
 }
+
+if (import.meta.env.DEV) window.__lyricsDebug = { build: (i, base = 48) => build(META[i], base), META };
 
 // ───────────── engine ─────────────
 export function createLyrics(layer, { onCue } = {}) {
@@ -541,9 +558,31 @@ export function createLyrics(layer, { onCue } = {}) {
     active.set(m.i, { el, tl, rect: pos.rect });
   };
 
+  let lastDuck = 0;
+  const duck = (now) => {
+    if (now - lastDuck < 140 || !active.size) return;
+    lastDuck = now;
+    const vh = innerHeight;
+    const rects = [...document.querySelectorAll(cinema ? AVOID_CINEMA : AVOID)]
+      .map((n) => n.getBoundingClientRect())
+      .filter((r) => r.width && r.bottom > 0 && r.top < vh);
+    for (const a of active.values()) {
+      const r = a.el.getBoundingClientRect();
+      const area = Math.max(1, r.width * r.height);
+      let f = 0;
+      for (const c of rects) f += overlap(r, c) / area;
+      const o = f > 0.3 ? 0.14 : f > 0.1 ? 0.45 : 1;
+      if (a.duck !== o) {
+        a.duck = o;
+        a.el.firstElementChild.style.opacity = o;
+      }
+    }
+  };
+
   const frame = () => {
     if (!running) return;
     requestAnimationFrame(frame);
+    duck(performance.now());
     const t = clock() - AUDIO_OFFSET;
     if (t < lastT - 0.75) clear(); // song looped or was seeked back
     lastT = t;
@@ -581,5 +620,10 @@ export function createLyrics(layer, { onCue } = {}) {
       layer.classList.remove('is-on');
     },
     reset: clear,
+    /** lift the lyrics above the intro film (true) or back behind the page */
+    setCinema(on) {
+      cinema = on;
+      layer.classList.toggle('is-cinema', on);
+    },
   };
 }
