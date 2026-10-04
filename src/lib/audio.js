@@ -570,6 +570,7 @@ class SoundEngine {
       clinks: ['clink-a2', 'clink-b2', 'clink-b4', 'clink-b5', 'clink-c2'],
       cheer: ['cheer-195'],
       bowl: ['bowl-1', 'bowl-2', 'bowl-3'],
+      ticks: ['tick-1', 'tick-2', 'tick-3', 'tick-4'],
     };
     this.scenesReady = Promise.all(Object.entries(pools).map(([k, list]) => Promise.all(list.map(dec)).then((b) => (this.sceneBufs[k] = b.filter(Boolean)))));
   }
@@ -597,6 +598,27 @@ class SoundEngine {
     wet.connect(this.verbIn);
     this.scene = { dry, wet };
     return this.scene;
+  }
+
+  /**
+   * The countdown's opening seconds: four takes of a real clock tick in a
+   * shuffled order, played through twice. Ticks 1–4 sit at half the
+   * recording's level; 5–8 step that half down by a quarter each, and the
+   * eighth is barely there.
+   */
+  clockTick(n) {
+    const LEVELS = [0.5, 0.5, 0.5, 0.5, 0.375, 0.25, 0.125, 0.05];
+    const bufs = this.sceneBufs?.ticks;
+    if (!this.live || !bufs?.length || n >= LEVELS.length) return;
+    this.tickOrder ??= bufs.map((b, i) => [Math.random(), i]).sort((a, b) => a[0] - b[0]).map(([, i]) => i);
+    const { ctx } = this;
+    const src = ctx.createBufferSource();
+    src.buffer = bufs[this.tickOrder[n % bufs.length]];
+    const g = ctx.createGain();
+    g.gain.value = LEVELS[n] / 0.9; // straight into the master: exact level (see announce)
+    src.connect(g);
+    g.connect(this.master);
+    src.start(this.now(0.005));
   }
 
   /** a paused context or samples still on their way: try once more when ready */

@@ -355,6 +355,13 @@ async function playFilm(withSound) {
 }
 
 // ───────────── 3 · Sydney at night: song, fireworks, the page ─────────────
+// eight clock ticks on the countdown's first seconds, fading away — once
+let clockTicks = -1;
+document.addEventListener('ausmc:second', () => {
+  if (clockTicks < 0 || clockTicks >= 8) return;
+  sound.clockTick(clockTicks++);
+});
+
 async function revealPage() {
   const slot = document.querySelector('.hero__slot');
   gsap.killTweensOf(logo.float);
@@ -376,6 +383,8 @@ async function revealPage() {
   tl.call(() => hero.reveal(), null, 0.45);
   tl.call(() => fireworks.start({ welcome: !reduced, heartAround: document.querySelector('.hero__slot') }), null, 0.4);
   tl.add(heroEnter({ reduced }), reduced ? 0.2 : 0.6);
+  // the seconds reels have dropped in: the next rolls tick in the visitor's ears
+  tl.call(() => (clockTicks = 0), null, (reduced ? 0.2 : 0.6) + 1.1);
   tl.to('#nav', { opacity: 1, y: 0, duration: 1.2, ease: spring({ bounce: 0.32 }) }, reduced ? 0.2 : 1.0);
   await tl;
 

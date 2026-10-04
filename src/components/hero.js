@@ -183,6 +183,7 @@ function buildCountdown(root) {
         cell.classList.remove('is-tick');
         void cell.offsetWidth;
         cell.classList.add('is-tick');
+        document.dispatchEvent(new CustomEvent('ausmc:second'));
         if (vals.s === 0) {
           root.classList.remove('is-minute');
           void root.offsetWidth;
