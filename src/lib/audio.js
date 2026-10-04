@@ -11,6 +11,57 @@ class SoundEngine {
     this.enabled = false;
     this.lastHover = 0;
     this.ambient = null;
+    this.diag = []; // what loaded / what played, shown on screen with ?sfx
+    this.ctxReady = new Promise((res) => (this.onCtx = res));
+  }
+
+  note(msg) {
+    this.diag.push(`${(performance.now() / 1000).toFixed(1)}s ${msg}`);
+    if (this.diag.length > 60) this.diag.shift();
+  }
+
+  // ───── sample loading: one shared decoder, two files at a time (phones can
+  // drop decodes when two dozen start at once); a failed decode is retried
+  // once with the live audio context ─────
+  load(url) {
+    const name = url.split('/').pop().replace(/\?.*$/, '');
+    return fetch(url)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((bytes) => this.decode(bytes).then((b) => b || (this.note(`${name} decode failed, retrying`), this.ctxReady.then(() => this.decode(bytes)))))
+      .then((b) => {
+        this.note(b ? `${name} ok ${b.duration.toFixed(2)}s` : `${name} FAILED to decode`);
+        return b;
+      })
+      .catch((e) => {
+        this.note(`${name} FAILED to load (${e.message})`);
+        return null;
+      });
+  }
+
+  decode(bytes) {
+    return new Promise((resolve) => {
+      const run = () => {
+        this.decoding = (this.decoding || 0) + 1;
+        const ctx = this.ctx || (this.decoder ??= new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 48000));
+        let settled = false;
+        const done = (b) => {
+          if (settled) return;
+          settled = true;
+          this.decoding--;
+          this.decodeWait?.shift()?.();
+          resolve(b || null);
+        };
+        try {
+          // callbacks for older WebKit; the promise form where it exists
+          const p = ctx.decodeAudioData(bytes.slice(0), done, () => done(null));
+          if (p?.then) p.then(done, () => done(null));
+        } catch {
+          done(null);
+        }
+      };
+      if ((this.decoding || 0) < 2) run();
+      else (this.decodeWait ??= []).push(run);
+    });
   }
 
   /** Must be called from inside a user gesture the first time (iOS unlock). */
@@ -23,6 +74,7 @@ class SoundEngine {
       if (navigator.audioSession) navigator.audioSession.type = 'playback';
     } catch { /* not supported */ }
     const ctx = (this.ctx = new AC({ latencyHint: 'interactive' }));
+    this.onCtx(ctx);
 
     this.master = ctx.createGain();
     this.master.gain.value = 0;
@@ -530,8 +582,7 @@ class SoundEngine {
       burst: ['burst-60076', 'burst-60078', 'burst-60079', 'burst-60080'],
       crackles: ['crackles-19'],
     };
-    const dec = (n) => fetch(`${base}${n}.m4a`).then((r) => r.arrayBuffer())
-      .then((ab) => new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 48000).decodeAudioData(ab)).catch(() => null);
+    const dec = (n) => this.load(`${base}${n}.m4a`);
     this.fwBufs = {};
     this.fwLast = {};
     for (const [k, list] of Object.entries(names)) {
@@ -564,8 +615,8 @@ class SoundEngine {
   preloadScenes(base) {
     if (this.sceneBufs) return;
     this.sceneBufs = {};
-    const dec = (n) => fetch(`${base}${n}.m4a`).then((r) => r.arrayBuffer())
-      .then((ab) => new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 48000).decodeAudioData(ab)).catch(() => null);
+    this.sceneBase = base;
+    const dec = (n) => this.load(`${base}${n}.m4a`);
     const pools = {
       clinks: ['clink-a2', 'clink-b2', 'clink-b4', 'clink-b5', 'clink-c2'],
       cheer: ['cheer-195'],
@@ -659,8 +710,8 @@ class SoundEngine {
   toast({ cheer = false, retry = true } = {}) {
     if (!this.enabled || !this.ctx) return;
     const clinks = this.sceneBufs?.clinks;
-    const ready = clinks?.length && (!cheer || this.sceneBufs.cheer?.length);
-    if (!this.live || !ready) {
+    this.note(`toast${cheer ? ' + applause' : ''}: ctx ${this.ctx.state}, clinks ${clinks?.length ?? '…'}, applause ${this.sceneBufs?.cheer?.length ?? '…'}`);
+    if (!this.live || !clinks?.length) {
       if (retry) this.whenReady(() => this.toast({ cheer, retry: false }));
       return;
     }
@@ -683,19 +734,29 @@ class SoundEngine {
       this.route(g, { pan, wet: 0.22, bus });
       src.start(t0 + off);
     });
-    const ch = this.sceneBufs?.cheer?.[0];
-    if (cheer && ch) {
+    if (!cheer) return;
+    const applause = (buf, t) => {
       const src = ctx.createBufferSource();
-      src.buffer = ch;
+      src.buffer = buf;
       const g = ctx.createGain();
       // the crowd sits above the soundtrack (song body ≈ -22 dB, applause body
       // ≈ -13 dB at unity); 0.595 = the earlier 0.85 lowered by 30%
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.linearRampToValueAtTime(0.595, t0 + 0.1);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.595, t + 0.1);
       src.connect(g);
       this.route(g, { wet: 0.15, bus });
-      src.start(t0 + 0.04);
-    }
+      src.start(t);
+      this.note('applause playing');
+    };
+    const ch = this.sceneBufs.cheer?.[0];
+    if (ch) return applause(ch, t0 + 0.04);
+    // not decoded on this device (yet): fetch it again now and join the clinks
+    const asked = ctx.currentTime;
+    this.load(`${this.sceneBase}cheer-195.m4a`).then((b) => {
+      if (!b) return;
+      this.sceneBufs.cheer = [b];
+      if (this.scene === bus && ctx.currentTime - asked < 3) applause(b, ctx.currentTime + 0.02);
+    });
   }
 
   /** soft rising hiss of a shell climbing (broad filter, no whistle) */
@@ -832,14 +893,10 @@ class SoundEngine {
   // ───── the announcer: "And the winner is…" as the arrival lands ─────
   preloadVoice(url) {
     if (this.voiceLoading) return;
-    this.voiceLoading = fetch(url)
-      .then((r) => r.arrayBuffer())
-      .then((ab) => new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 48000).decodeAudioData(ab))
-      .then((b) => (this.voiceBuf = b))
-      .catch(() => null);
+    this.voiceLoading = this.load(url).then((b) => (this.voiceBuf = b));
   }
 
-  announce({ gain = 0.4 } = {}) {
+  announce({ gain = 0.28 } = {}) { // 0.4, then a further 30% down
     const buf = this.voiceBuf;
     if (!this.live || !buf) return;
     const { ctx } = this;
@@ -856,10 +913,7 @@ class SoundEngine {
 
   preloadHarbour(url) {
     if (this.harbourBuf) return this.harbourBuf;
-    this.harbourBuf = fetch(url)
-      .then((r) => r.arrayBuffer())
-      .then((ab) => new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 48000).decodeAudioData(ab))
-      .catch(() => null);
+    this.harbourBuf = this.load(url);
     return this.harbourBuf;
   }
 

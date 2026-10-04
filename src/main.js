@@ -140,8 +140,19 @@ function syncFireworks(m, ms) {
 
 sound.preloadHarbour(`${import.meta.env.BASE_URL}media/harbour-ambience.m4a`);
 sound.preloadFireworks(`${import.meta.env.BASE_URL}media/sfx/`);
-sound.preloadScenes(`${import.meta.env.BASE_URL}media/sfx/`);
 sound.preloadVoice(`${import.meta.env.BASE_URL}media/sfx/winner.m4a`);
+sound.preloadScenes(`${import.meta.env.BASE_URL}media/sfx/`);
+
+// ?sfx — a small on-screen report of the sound samples, for testing on phones
+if (new URLSearchParams(location.search).has('sfx')) {
+  const box = document.createElement('pre');
+  box.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:9999;max-height:38vh;overflow:hidden;margin:0;padding:8px 10px;font:10px/1.45 ui-monospace,Menlo,monospace;color:#d8e6ff;background:rgba(0,0,0,.8);border-radius:10px;pointer-events:none;white-space:pre-wrap';
+  document.body.appendChild(box);
+  document.addEventListener('ausmc:arrived', (e) => sound.note(`arrived at the map (${e.detail})`));
+  setInterval(() => {
+    box.textContent = [`audio ${sound.ctx?.state ?? 'not started'} · sound ${sound.enabled ? 'on' : 'off'}`, ...sound.diag.slice(-16)].join('\n');
+  }, 400);
+}
 const HARBOUR_BED = 0.32; // level under the soundtrack
 
 const tapSound = document.querySelector('.tap-sound');
