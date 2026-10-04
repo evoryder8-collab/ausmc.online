@@ -29,7 +29,7 @@ for spec in "1920:1080:22" "1280:720:23"; do
   IFS=: read -r w h crf <<<"$spec"
   ffmpeg -v error -y -i "$SRC/airplane flyby.mp4" -t $PLANE_T -map 0:v:0 -map 0:a:0 \
     -vf "scale=$w:$h:flags=lanczos,format=yuv420p,fade=t=out:st=9.65:d=1.2" -c:v libx264 -preset slow -crf "$crf" -profile:v high -pix_fmt yuv420p \
-    -af "afade=t=out:st=9.65:d=1.2" -c:a aac -b:a 160k -ar 48000 -movflags +faststart "$OUT/plane-$h.mp4"
+    -af "volume=0.7,afade=t=out:st=9.65:d=1.2" -c:a aac -b:a 160k -ar 48000 -movflags +faststart "$OUT/plane-$h.mp4"
 done
 ffmpeg -v error -y -i "$OUT/plane-720.mp4" -frames:v 1 -q:v 4 "$OUT/plane-poster.jpg"
 
