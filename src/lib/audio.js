@@ -616,10 +616,12 @@ class SoundEngine {
       const src = ctx.createBufferSource();
       src.buffer = ch;
       const g = ctx.createGain();
+      // the crowd must sit clearly above the soundtrack (song body ≈ -22 dB,
+      // applause body ≈ -13 dB at unity): 0.85 lands it ~8 dB above the song
       g.gain.setValueAtTime(0.0001, t0);
-      g.gain.linearRampToValueAtTime(0.3, t0 + 0.12);
+      g.gain.linearRampToValueAtTime(0.85, t0 + 0.1);
       src.connect(g);
-      this.route(g, { wet: 0.12, bus });
+      this.route(g, { wet: 0.15, bus });
       src.start(t0 + 0.04);
     }
   }
