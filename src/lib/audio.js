@@ -49,6 +49,13 @@ class SoundEngine {
 
     this.noise = this.makeNoise(2.5);
 
+    // fireworks get their own bus so they can fade with scroll (tails included)
+    this.fwDry = ctx.createGain();
+    this.fwWet = ctx.createGain();
+    this.fwDry.connect(this.dry);
+    this.fwWet.connect(this.verbIn);
+    this.fwDry.gain.value = this.fwWet.gain.value = this.fwVol ?? 1;
+
     // unlock: a silent blip inside the gesture
     const b = ctx.createBuffer(1, 1, 22050);
     const s = ctx.createBufferSource();
@@ -114,7 +121,16 @@ class SoundEngine {
   }
 
   /** route a node to the dry bus + reverb send, with optional panning */
-  route(node, { pan = 0, wet = 0.3, gain = 1 } = {}) {
+  /** 0..1: fireworks loudness (smoothly ramped) */
+  setFireworksVolume(v) {
+    this.fwVol = v;
+    if (!this.fwDry) return;
+    const t = this.ctx.currentTime;
+    this.fwDry.gain.setTargetAtTime(v, t, 0.12);
+    this.fwWet.gain.setTargetAtTime(v, t, 0.12);
+  }
+
+  route(node, { pan = 0, wet = 0.3, gain = 1, fw = false } = {}) {
     const { ctx } = this;
     const g = ctx.createGain();
     g.gain.value = gain;
@@ -126,12 +142,12 @@ class SoundEngine {
       g.connect(p);
       out = p;
     }
-    out.connect(this.dry);
+    out.connect(fw ? this.fwDry : this.dry);
     if (wet > 0) {
       const w = ctx.createGain();
       w.gain.value = wet;
       out.connect(w);
-      w.connect(this.verbIn);
+      w.connect(fw ? this.fwWet : this.verbIn);
     }
     return { gain: g, out };
   }
@@ -528,7 +544,7 @@ class SoundEngine {
     const g = ctx.createGain();
     g.gain.value = gain;
     src.connect(g);
-    this.route(g, { pan, wet });
+    this.route(g, { fw: true, pan, wet });
     src.start(t);
     return true;
   }
@@ -553,7 +569,7 @@ class SoundEngine {
     e.gain.exponentialRampToValueAtTime(gain * 0.3, t + dur * 0.8);
     e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     n.connect(bp).connect(lp).connect(e);
-    this.route(e, { pan, wet: 0.15 });
+    this.route(e, { fw: true, pan, wet: 0.15 });
   }
 
   /** the burst: a short, dull thump of air — no ringing sweep */
@@ -574,7 +590,7 @@ class SoundEngine {
     oe.gain.linearRampToValueAtTime(g * 0.8, t + 0.01);
     oe.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
     o.connect(oe);
-    this.route(oe, { pan: pan * 0.4, wet: 0.06 });
+    this.route(oe, { fw: true, pan: pan * 0.4, wet: 0.06 });
     o.start(t);
     o.stop(t + 0.6);
 
@@ -589,7 +605,7 @@ class SoundEngine {
     ne.gain.linearRampToValueAtTime(g * 0.75, t + 0.008);
     ne.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
     n.connect(lp).connect(ne);
-    this.route(ne, { pan, wet: 0.2 });
+    this.route(ne, { fw: true, pan, wet: 0.2 });
   }
 
   /** a soft glitter tail (one generated buffer per call) */
@@ -617,7 +633,7 @@ class SoundEngine {
     e.gain.setValueAtTime(gain, t);
     e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     s.connect(bp).connect(e);
-    this.route(e, { pan, wet: 0.18 });
+    this.route(e, { fw: true, pan, wet: 0.18 });
     s.start(t);
   }
 

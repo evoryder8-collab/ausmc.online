@@ -156,6 +156,14 @@ tapSound.addEventListener('click', async () => {
   if (await song.start()) gsap.to(tapSound, { y: 60, opacity: 0, duration: 0.4, onComplete: () => (tapSound.hidden = true) });
 });
 
+// fireworks fade out smoothly as the visitor scrolls on toward the schedule
+ScrollTrigger.create({
+  trigger: '.hero',
+  start: 'top top',
+  end: '75% top',
+  onUpdate: (self) => sound.setFireworksVolume(Math.pow(1 - self.progress, 1.6)),
+});
+
 // scroll-linked atmosphere
 ScrollTrigger.create({
   start: 0,
@@ -192,7 +200,10 @@ const syncToggle = () => {
   toggle.setAttribute('aria-label', sound.enabled ? 'Mute sound' : 'Turn sound on');
   toggle.classList.toggle('is-on', sound.enabled);
 };
+try { if (!localStorage.getItem('ausmc:sound-known')) toggle.classList.add('is-hinting'); } catch { toggle.classList.add('is-hinting'); }
 toggle.addEventListener('click', () => {
+  toggle.classList.remove('is-hinting');
+  try { localStorage.setItem('ausmc:sound-known', '1'); } catch { /* private mode */ }
   const on = !sound.enabled;
   sound.setEnabled(on);
   if (on) {
