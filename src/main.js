@@ -141,6 +141,7 @@ function syncFireworks(m, ms) {
 sound.preloadHarbour(`${import.meta.env.BASE_URL}media/harbour-ambience.m4a`);
 sound.preloadFireworks(`${import.meta.env.BASE_URL}media/sfx/`);
 sound.preloadScenes(`${import.meta.env.BASE_URL}media/sfx/`);
+sound.preloadVoice(`${import.meta.env.BASE_URL}media/sfx/winner.m4a`);
 const HARBOUR_BED = 0.32; // level under the soundtrack
 
 const tapSound = document.querySelector('.tap-sound');
@@ -273,6 +274,7 @@ const SONG_AT_SEC = 2.97;
 const SKIP_AFTER = 6.2; // seconds into the footage before "Skip intro" appears
 const MOBILE = matchMedia('(max-width: 720px)').matches;
 const EARLY_FIREWORKS = 2; // phones: the welcome wave launches 2s before the arrival ends
+const ANNOUNCE_BEFORE_END = 1; // "And the winner is…" one second before the flight lands
 
 async function playFilm(withSound) {
   const filmEl = intro.querySelector('.intro__film');
@@ -294,6 +296,12 @@ async function playFilm(withSound) {
   let songIn = false;
   let skipShown = false;
   let earlyFw = false;
+  let announced = false;
+  const announce = () => {
+    if (announced) return;
+    announced = true;
+    sound.announce();
+  };
   const check = () => {
     const d = v.duration;
     if (d && !songIn && v.currentTime >= Math.min(SONG_AT_SEC, d * 0.5)) {
@@ -307,6 +315,7 @@ async function playFilm(withSound) {
       earlyFw = true; // shells climb behind the fading film and burst as the page appears
       fireworks.start({ welcome: !reduced });
     }
+    if (d && v.currentTime >= d - ANNOUNCE_BEFORE_END) announce();
     if (!skipShown && v.currentTime >= SKIP_AFTER) {
       skipShown = true;
       skipBtn.classList.add('is-shown');
@@ -334,6 +343,7 @@ async function playFilm(withSound) {
   const guard = setTimeout(() => finish('timeout'), ((v.duration || 15) + 4) * 1000);
   const how = await done;
   over = true;
+  announce(); // a skipped flight still lands with the announcement
   v.removeEventListener('timeupdate', check);
   clearTimeout(guard);
   skipBtn.removeEventListener('click', onSkip);

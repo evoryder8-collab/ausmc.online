@@ -776,6 +776,31 @@ class SoundEngine {
   // Decoded ahead of time (no context needed) so it can start the instant the
   // visitor taps "Yes", then loops sample-accurately through Web Audio.
 
+  // ───── the announcer: "And the winner is…" as the arrival lands ─────
+  preloadVoice(url) {
+    if (this.voiceLoading) return;
+    this.voiceLoading = fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((ab) => new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 48000).decodeAudioData(ab))
+      .then((b) => (this.voiceBuf = b))
+      .catch(() => null);
+  }
+
+  announce({ gain = 0.4 } = {}) {
+    const buf = this.voiceBuf;
+    if (!this.live || !buf) return;
+    const { ctx } = this;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = ctx.createGain();
+    // straight into the master (past the bus compressor, undoing its 0.9) so
+    // the voice sits at exactly `gain` × the recording's own level
+    g.gain.value = gain / 0.9;
+    src.connect(g);
+    g.connect(this.master);
+    src.start(this.now(0.01));
+  }
+
   preloadHarbour(url) {
     if (this.harbourBuf) return this.harbourBuf;
     this.harbourBuf = fetch(url)
