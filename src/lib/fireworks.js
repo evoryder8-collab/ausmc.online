@@ -70,6 +70,11 @@ export class Fireworks {
    * Then the normal show takes over.
    */
   start({ welcome = false, heartAround = null } = {}) {
+    if (this.started) {
+      if (heartAround) this.heartAround(heartAround, performance.now() + 1650);
+      return;
+    }
+    this.started = true;
     this.auto = !this.reduced;
     const now = performance.now();
     this.nextAuto = now + (welcome ? 4300 : 600);

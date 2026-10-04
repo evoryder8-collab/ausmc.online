@@ -282,7 +282,7 @@ export function heroEnter({ reduced }) {
     return tl;
   }
   tl.fromTo('.hero__title-main', { '--w': 62, opacity: 0, y: 40, filter: 'blur(12px) drop-shadow(0px 10px 40px rgba(60,100,255,0))' }, { '--w': 125, opacity: 1, y: 0, filter: 'blur(0px) drop-shadow(0px 10px 40px rgba(60,100,255,0.35))', duration: 1.6, ease: 'expo.out' }, 0.15);
-  tl.fromTo('.hero__title-year', { opacity: 0, y: 30, rotation: -6, filter: 'blur(10px) drop-shadow(0px 8px 36px rgba(228,0,43,0))' }, { opacity: 1, y: 0, rotation: 0, filter: 'blur(0px) drop-shadow(0px 8px 36px rgba(228,0,43,0.45))', duration: 1.3, ease: spring({ bounce: 0.3 }) }, 0.35);
+  tl.fromTo('.hero__title-year', { '--w': 62, opacity: 0, y: 40, filter: 'blur(12px) drop-shadow(0px 10px 32px rgba(228,0,43,0))' }, { '--w': 125, opacity: 1, y: 0, filter: 'blur(0px) drop-shadow(0px 10px 32px rgba(228,0,43,0.32))', duration: 1.6, ease: 'expo.out' }, 0.3);
   tl.fromTo(items, { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 1.1, ease: spring({ bounce: 0.28 }), stagger: 0.07 }, 0.4);
   tl.call(() => {
     document.querySelectorAll('.reel').forEach((r, i) => gsap.fromTo(r, { yPercent: -70, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 1.1, delay: i * 0.05, ease: spring({ bounce: 0.4 }) }));

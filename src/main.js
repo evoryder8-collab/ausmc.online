@@ -258,6 +258,8 @@ async function begin(withSound, btn) {
 // on the same moment of the jet pass.
 const SONG_AT_SEC = 2.97;
 const SKIP_AFTER = 7.2; // seconds into the footage before "Skip intro" appears
+const MOBILE = matchMedia('(max-width: 720px)').matches;
+const EARLY_FIREWORKS = 2; // phones: the welcome wave launches 2s before the arrival ends
 
 async function playFilm(withSound) {
   const filmEl = intro.querySelector('.intro__film');
@@ -278,6 +280,7 @@ async function playFilm(withSound) {
   // frame-accurate watch of the footage: song entry + skip button
   let songIn = false;
   let skipShown = false;
+  let earlyFw = false;
   const check = () => {
     const d = v.duration;
     if (d && !songIn && v.currentTime >= Math.min(SONG_AT_SEC, d * 0.5)) {
@@ -286,6 +289,10 @@ async function playFilm(withSound) {
         lyrics.setCinema(true); // the opening lines play over the arrival
         startSong();
       }
+    }
+    if (MOBILE && !earlyFw && d && v.currentTime >= d - EARLY_FIREWORKS) {
+      earlyFw = true; // shells climb behind the fading film and burst as the page appears
+      fireworks.start({ welcome: !reduced });
     }
     if (!skipShown && v.currentTime >= SKIP_AFTER) {
       skipShown = true;
