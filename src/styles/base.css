@@ -93,37 +93,6 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
 }
 @keyframes bgdrift { to { background-position: 100% 60%, 0% 20%, 50% 50%; } }
 
-.orbs { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.1) 16%, transparent 36%),
-    radial-gradient(circle at 68% 78%, rgba(130, 165, 255, 0.28), transparent 46%),
-    radial-gradient(circle, transparent 62%, rgba(255, 255, 255, 0.16) 71%, transparent 73%);
-  box-shadow:
-    inset 0 0 26px rgba(255, 255, 255, 0.1),
-    inset -12px -16px 34px rgba(0, 12, 50, 0.4),
-    0 40px 70px -30px rgba(0, 0, 20, 0.6);
-  animation: drift 20s ease-in-out infinite alternate;
-}
-.orb--1 { width: 170px; height: 170px; top: 16%; left: 4%; }
-.orb--2 { width: 84px; height: 84px; top: 70%; left: 86%; animation-duration: 16s; animation-delay: -6s; }
-.orb--3 { width: 250px; height: 250px; top: 96%; left: 72%; animation-duration: 26s; }
-.orb--4 {
-  width: 120px; height: 120px; top: 132%; left: 10%;
-  animation-duration: 22s; animation-delay: -10s;
-  background:
-    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.1) 16%, transparent 36%),
-    radial-gradient(circle at 68% 78%, rgba(255, 45, 85, 0.35), transparent 50%),
-    radial-gradient(circle, transparent 62%, rgba(255, 255, 255, 0.16) 71%, transparent 73%);
-}
-@keyframes drift {
-  0% { transform: translate3d(0, 0, 0) rotate(0deg); }
-  50% { transform: translate3d(18px, -26px, 0) rotate(8deg); }
-  100% { transform: translate3d(-14px, 12px, 0) rotate(-6deg); }
-}
-
 .grain {
   position: fixed;
   inset: 0;
@@ -298,9 +267,30 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
 /* ───────── footer ───────── */
 .footer {
   position: relative;
+  min-height: clamp(560px, 92vh, 900px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
   padding: clamp(80px, 12vw, 160px) var(--gutter) calc(48px + env(safe-area-inset-bottom, 0px));
   text-align: center;
   overflow: hidden;
+}
+.footer__media {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.55) 28%, #000 58%);
+  mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.55) 28%, #000 58%);
+}
+.footer__video { width: 100%; height: 100%; object-fit: cover; object-position: 50% 42%; filter: saturate(1.05) contrast(1.04) brightness(0.86); }
+.footer__media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(0deg, rgba(0, 5, 20, 0.92) 0%, rgba(0, 5, 20, 0.55) 34%, rgba(0, 10, 40, 0.18) 64%, rgba(0, 10, 40, 0.1) 100%),
+    linear-gradient(180deg, rgba(1, 33, 105, 0.25), rgba(1, 33, 105, 0));
 }
 .footer__mark {
   font-family: var(--f-display);
@@ -345,6 +335,67 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
 }
 .footer__top .i { order: 2; transition: transform 0.5s var(--ease); }
 .footer__top:hover .i { transform: translateY(-3px); }
+
+/* ───────── kinetic lyrics (behind the content) ───────── */
+.lyrics {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.9s var(--ease);
+}
+.lyrics.is-on { opacity: 1; }
+.ly {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  color: #fff;
+  line-height: 1.08;
+  visibility: hidden;
+  text-shadow: 0 2px 28px rgba(0, 8, 40, 0.6), 0 0 18px rgba(150, 180, 255, 0.25);
+}
+.ly__in { position: relative; display: inline-block; transform-origin: 50% 55%; word-spacing: 0.1em; }
+.ly__ghost { position: absolute; left: 0; top: 0; color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.65); text-shadow: none; transform-origin: 50% 55%; }
+.ly__ghost .lc { opacity: 1 !important; transform: none !important; filter: none !important; }
+.lw { display: inline-block; white-space: nowrap; }
+.lc { display: inline-block; }
+.ly--display { font-family: var(--f-display); font-stretch: 110%; font-weight: 760; letter-spacing: -0.02em; }
+.ly--serif { font-family: var(--f-serif); font-style: italic; font-weight: 400; letter-spacing: -0.005em; }
+.ly--again { font-weight: 900; font-stretch: 125%; letter-spacing: -0.035em; text-shadow: 0 0 40px rgba(255, 45, 85, 0.55), 0 0 100px rgba(106, 149, 255, 0.35), 0 4px 30px rgba(0, 8, 40, 0.6); }
+.ly--skew .ly__in { transform: skewX(-9deg); }
+.ly--long .lw[data-w='long'] { font-stretch: calc(var(--w, 100) * 1%); }
+.ly--heavy { font-weight: 900; font-stretch: 122%; }
+.ly--warm { text-shadow: 0 0 44px rgba(255, 190, 120, 0.55), 0 2px 28px rgba(0, 8, 40, 0.6); }
+.ly-tiny { font-family: var(--f-ui); font-style: normal; font-weight: 600; font-size: 0.3em; letter-spacing: 0.34em; text-transform: uppercase; vertical-align: middle; }
+.ly-strong { font-weight: 900; }
+.ly-italic { font-family: var(--f-serif); font-style: italic; font-weight: 400; }
+.ly-no { font-size: 1.45em; font-weight: 900; color: var(--red-hi); text-shadow: 0 0 32px rgba(255, 45, 85, 0.85); }
+.ly-heart { color: var(--red-hi); text-shadow: 0 0 32px rgba(255, 45, 85, 0.9); }
+.ly-bar { position: absolute; left: 0; right: 0; bottom: -0.1em; height: 0.07em; border-radius: 1em; background: linear-gradient(90deg, var(--red-hi), #fff); transform-origin: 0 50%; }
+.ly-pen { position: absolute; top: 55%; width: 0.16em; height: 0.16em; margin: -0.08em 0 0 -0.08em; border-radius: 50%; background: #fff; box-shadow: 0 0 12px #fff, 0 0 30px rgba(106, 149, 255, 0.95); }
+.ly-underline { position: relative; }
+.ly-underline::after { content: ''; position: absolute; left: 0; right: 0; bottom: -0.04em; height: 0.06em; border-radius: 1em; background: var(--red-hi); transform: scaleX(var(--u, 0)); transform-origin: 0 50%; }
+
+.tap-sound {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 43;
+  translate: -50% 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tap-sound[hidden] { display: none; }
+.tap-sound .i { color: var(--red-hi); }
 
 /* ───────── live toast ───────── */
 .live-toast {

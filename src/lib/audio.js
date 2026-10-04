@@ -403,6 +403,119 @@ class SoundEngine {
     o.stop(t + 3.6);
   }
 
+  // ───────────────────────── fireworks ─────────────────────────
+
+  /** rising hiss of a shell climbing; sometimes with a whistle */
+  fwLaunch({ dur = 1.2, pan = 0, gain = 0.07 } = {}) {
+    if (!this.live) return;
+    const { ctx } = this;
+    const t = this.now();
+    const n = this.noiseSrc(t, dur);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 1.6;
+    bp.frequency.setValueAtTime(500, t);
+    bp.frequency.exponentialRampToValueAtTime(2600, t + dur * 0.85);
+    const e = ctx.createGain();
+    e.gain.setValueAtTime(0.0001, t);
+    e.gain.linearRampToValueAtTime(gain, t + 0.08);
+    e.gain.exponentialRampToValueAtTime(gain * 0.25, t + dur * 0.8);
+    e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    n.connect(bp).connect(e);
+    this.route(e, { pan, wet: 0.35 });
+    if (Math.random() < 0.3) {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(950, t);
+      o.frequency.exponentialRampToValueAtTime(2300, t + dur * 0.9);
+      const vib = ctx.createOscillator();
+      vib.frequency.value = 22;
+      const va = ctx.createGain();
+      va.gain.value = 18;
+      vib.connect(va).connect(o.frequency);
+      const oe = ctx.createGain();
+      oe.gain.setValueAtTime(0.0001, t);
+      oe.gain.linearRampToValueAtTime(0.022, t + 0.12);
+      oe.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(oe);
+      this.route(oe, { pan, wet: 0.4 });
+      o.start(t);
+      vib.start(t);
+      o.stop(t + dur + 0.05);
+      vib.stop(t + dur + 0.05);
+    }
+  }
+
+  /** the burst itself: sub thump + rolling body + air crack */
+  fwBoom({ pan = 0, size = 1, gain = 0.5 } = {}) {
+    if (!this.live) return;
+    const { ctx } = this;
+    const t = this.now();
+    const g = gain * (0.6 + 0.4 * size);
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(95, t);
+    o.frequency.exponentialRampToValueAtTime(32, t + 0.45);
+    const oe = ctx.createGain();
+    oe.gain.setValueAtTime(0.0001, t);
+    oe.gain.linearRampToValueAtTime(g, t + 0.008);
+    oe.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+    o.connect(oe);
+    this.route(oe, { pan: pan * 0.5, wet: 0.25 });
+    o.start(t);
+    o.stop(t + 1.2);
+
+    const n = this.noiseSrc(t, 2.2);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(1400, t);
+    lp.frequency.exponentialRampToValueAtTime(180, t + 1.6);
+    const ne = ctx.createGain();
+    ne.gain.setValueAtTime(0.0001, t);
+    ne.gain.linearRampToValueAtTime(g * 0.9, t + 0.006);
+    ne.gain.exponentialRampToValueAtTime(0.0001, t + 2.0);
+    n.connect(lp).connect(ne);
+    this.route(ne, { pan, wet: 0.55 });
+
+    const c = this.noiseSrc(t, 0.06);
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 2400;
+    const ce = ctx.createGain();
+    ce.gain.setValueAtTime(g * 0.5, t);
+    ce.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    c.connect(hp).connect(ce);
+    this.route(ce, { pan, wet: 0.3 });
+  }
+
+  /** glittering crackle tail (one procedurally generated buffer per call) */
+  fwCrackle({ pan = 0, delay = 0.35, dur = 1.1, density = 60, gain = 0.16 } = {}) {
+    if (!this.live) return;
+    const { ctx } = this;
+    const t = this.now(delay);
+    const len = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    const pops = Math.round(density * dur);
+    for (let k = 0; k < pops; k++) {
+      const at = Math.floor(Math.pow(Math.random(), 0.8) * (len - 400));
+      const amp = 0.3 + Math.random() * 0.7;
+      const decay = 30 + Math.random() * 120;
+      for (let i = 0; i < 400; i++) d[at + i] += (Math.random() * 2 - 1) * amp * Math.exp(-i / decay);
+    }
+    const s = ctx.createBufferSource();
+    s.buffer = buf;
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 1800;
+    const e = ctx.createGain();
+    e.gain.setValueAtTime(gain, t);
+    e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(hp).connect(e);
+    this.route(e, { pan, wet: 0.5 });
+    s.start(t);
+  }
+
   // ───────────────────────── UI ─────────────────────────
 
   hover() {

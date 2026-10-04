@@ -15,6 +15,15 @@ npm run dev
 
 `npm run build` writes the static site to `dist/`.
 
+## The opening sequence
+
+Sound On → the layered logo assembles → the camera flies through the badge into the sky → the plane arrives over Sydney (`public/media/plane-*.mp4`, with its own flyby audio) → on the film's last frame the official soundtrack starts and the page opens on Sydney at night with fireworks.
+
+- **Soundtrack**: `public/media/soundtrack.m4a` ("Run It Down Again"), looping with a short pause. It plays only after a visitor chooses sound; the nav toggle pauses and resumes it.
+- **Kinetic lyrics**: `src/data/lyrics.js` holds the 53 phrase cues exported from DaVinci Resolve. `AUDIO_OFFSET` (0.094s) corrects the soundtrack file's encoder padding, measured by cross-correlating against the full master. Movement for each phrase lives in `src/components/lyrics.js`.
+- **Fireworks**: `src/lib/fireworks.js`. Shells use real ballistics, so the big ones are timed to burst on the song's "again." beats. Their sounds are synthesised in `src/lib/audio.js`.
+- **Footage**: `scripts/build-media.sh` re-encodes the source clips to H.264 at 1080p (desktop) and 720p (phones), and bakes a long crossfade into the header and footer loops so the loop point is invisible.
+
 ## How it is built
 
 - Vite + vanilla JS, GSAP (timelines, ScrollTrigger, Flip, MotionPath), Lenis smooth scroll

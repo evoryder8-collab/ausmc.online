@@ -12,7 +12,6 @@ import './styles/venue.css';
 
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Flip } from 'gsap/Flip';
 import Lenis from 'lenis';
 
 import { sound } from './lib/audio.js';
@@ -27,8 +26,11 @@ import { playIntro } from './components/intro.js';
 import { initHero, heroEnter } from './components/hero.js';
 import { initSchedule } from './components/schedule.js';
 import { initVenue } from './components/venue.js';
+import { createLyrics } from './components/lyrics.js';
+import { createFilm, createLoop, createSong } from './components/media.js';
+import { Fireworks } from './lib/fireworks.js';
 
-gsap.registerPlugin(ScrollTrigger, Flip);
+gsap.registerPlugin(ScrollTrigger);
 if (import.meta.env.DEV) window.__ausmc = { gsap, ScrollTrigger };
 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -98,8 +100,52 @@ initVenue({ lenis, reduced, glass });
 hydrateIcons();
 glass.track();
 
-gsap.set(['.hero__halo', '.hero__title-main', '.hero__title-year', '.hero__eyebrow', '.hero__name', '.hero__meta li', '.countdown', '.hero__ctas > *', '.hero__scroll'], { opacity: 0 });
+gsap.set(['.hero__title-main', '.hero__title-year', '.hero__eyebrow', '.hero__name', '.hero__meta li', '.countdown', '.hero__ctas > *', '.hero__scroll'], { opacity: 0 });
 gsap.set('#nav', { opacity: 0, y: -90 });
+
+// ───────────── footage, fireworks, soundtrack, lyrics ─────────────
+const film = createFilm(document.querySelector('.intro__video'));
+const header = createLoop(document.querySelector('.hero__video'), 'header');
+createLoop(document.querySelector('.footer__video'), 'footer', { lazy: true });
+const fireworks = new Fireworks(document.querySelector('.hero__fireworks'), { sound, reduced });
+const lyrics = createLyrics(document.querySelector('.lyrics'), { onCue: syncFireworks });
+const song = createSong({ onStart: () => lyrics.play(), onPause: () => lyrics.pause() });
+lyrics.attach(song.audio);
+let revealed = false;
+if (import.meta.env.DEV) Object.assign(window.__ausmc, { song, film, fireworks, lyrics });
+
+/** land the big shells exactly on the song's emphasis beats */
+function syncFireworks(m, ms) {
+  if (!fireworks.active || reduced) return;
+  const at = performance.now() + ms;
+  const { W, H } = fireworks;
+  fireworks.nextAuto = Math.max(fireworks.nextAuto, at + 900);
+  const mid = () => W * (0.5 + (Math.random() - 0.5) * 0.36);
+  if (m.b === 'again') {
+    fireworks.launch({ burstAt: at, x: mid(), y: H * (0.12 + Math.random() * 0.14), size: m.last ? 1.75 : 1.35, type: m.last ? 'star' : ['peony', 'star', 'ring', 'chrys'][m.i % 4] });
+    if (m.dur > 2.5) [0.9, 2.0, 3.3, 4.6].forEach((d, k) => fireworks.launch({ burstAt: at + d * 1000, size: 1.05, type: ['willow', 'peony', 'crackle', 'ring'][k] }));
+    if (m.last) setTimeout(() => fireworks.volley(6, { size: 1.25 }), ms + 280);
+  } else if (m.b === 'heart') {
+    fireworks.launch({ burstAt: at + m.dur * 700, x: W * 0.5, y: H * 0.22, type: 'heart', size: 1.35, palette: ['255,45,85', '255,255,255'] });
+  } else if (m.b === 'burst') {
+    fireworks.launch({ burstAt: at, x: mid(), type: 'crackle', size: 1.15 });
+  } else if (m.b === 'istart') {
+    fireworks.launch({ burstAt: at + 150, x: mid(), type: 'ring', size: 1.25 });
+  }
+}
+
+const tapSound = document.querySelector('.tap-sound');
+async function startSong() {
+  if (await song.start()) return;
+  // a browser refused autoplay: offer a single tap to start the soundtrack
+  tapSound.hidden = false;
+  gsap.fromTo(tapSound, { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9, ease: spring({ bounce: 0.35 }) });
+}
+tapSound.addEventListener('click', async () => {
+  sound.setEnabled(true);
+  syncToggle();
+  if (await song.start()) gsap.to(tapSound, { y: 60, opacity: 0, duration: 0.4, onComplete: () => (tapSound.hidden = true) });
+});
 
 // scroll-linked atmosphere
 ScrollTrigger.create({
@@ -112,11 +158,6 @@ ScrollTrigger.create({
     document.querySelector('.progress span').style.transform = `scaleX(${self.progress})`;
   },
 });
-if (!reduced) {
-  document.querySelectorAll('.orb').forEach((orb, i) => {
-    gsap.to(orb, { yPercent: -60 - i * 45, ease: 'none', scrollTrigger: { start: 0, end: 'max', scrub: 1.2 } });
-  });
-}
 
 // in-page anchors glide with Lenis
 document.addEventListener('click', (e) => {
@@ -143,10 +184,13 @@ const syncToggle = () => {
   toggle.classList.toggle('is-on', sound.enabled);
 };
 toggle.addEventListener('click', () => {
-  sound.setEnabled(!sound.enabled);
-  if (sound.enabled) {
-    sound.startAmbient();
-    sound.chime(81, { gain: 0.08, dur: 1.4 });
+  const on = !sound.enabled;
+  sound.setEnabled(on);
+  if (on) {
+    sound.chime(81, { gain: 0.06, dur: 1.2 });
+    if (revealed) (song.started ? song.resume() : startSong());
+  } else {
+    song.pause();
   }
   syncToggle();
 });
@@ -171,7 +215,10 @@ portal.addEventListener('click', (e) => {
 async function begin(withSound, btn) {
   if (begun) return;
   begun = true;
-  sound.setEnabled(withSound); // inside the click: unlocks audio on iOS
+  // everything that must play with sound later is unlocked inside this tap (iOS)
+  sound.setEnabled(withSound);
+  film.prime(withSound);
+  if (withSound) song.prime();
   syncToggle();
   if (withSound) sound.tap();
 
@@ -187,37 +234,92 @@ async function begin(withSound, btn) {
 
   await logo.ready;
   intro.classList.add('is-active');
-  await playIntro({ logo, stage: intro, fx, bg, stars, reduced });
+  const { skipped } = await playIntro({ logo, stage: intro, fx, bg, stars, reduced });
+  if (!skipped && !reduced) await playFilm(withSound);
   await revealPage();
 }
 
-// ───────────── 3 · hand-off: badge flies into the hero ─────────────
-async function revealPage() {
-  const slot = document.querySelector('.hero__slot');
-  const state = Flip.getState(logo.root);
-  slot.appendChild(logo.root);
-  logo.root.classList.add('is-flying');
+// ───────────── 2b · through the badge, into the sky: the arrival ─────────────
+async function playFilm(withSound) {
+  const filmEl = intro.querySelector('.intro__film');
+  const dest = filmEl.querySelector('.intro__dest');
+  const v = film.video;
+  const skipBtn = intro.querySelector('.intro__skip');
+  await film.ready(4500);
+
+  let finish;
+  const done = new Promise((res) => (finish = res));
+  const onSkip = () => { sound.tap(); finish('skip'); };
+  const onKey = (e) => e.key === 'Escape' && onSkip();
+  skipBtn.addEventListener('click', onSkip);
+  addEventListener('keydown', onKey);
+  v.addEventListener('ended', () => finish('ended'), { once: true });
+
+  // a soft riser in the plane's quiet tail, cresting as the song arrives
+  let rose = false;
+  const onTime = () => {
+    if (!rose && v.duration && v.currentTime >= v.duration - 2.5) {
+      rose = true;
+      sound.swell({ dur: 2.3, gain: 0.07 });
+    }
+  };
+  v.addEventListener('timeupdate', onTime);
 
   const tl = gsap.timeline();
-  tl.add(Flip.from(state, { duration: reduced ? 0.6 : 1.55, ease: 'expo.inOut', scale: true }), 0);
-  tl.to('.intro__bg', { opacity: 0, duration: 1.1, ease: 'power2.inOut' }, 0.15);
-  tl.to(['.intro__caption', '.intro__skip'], { opacity: 0, y: -30, duration: 0.6, ease: 'power2.in' }, 0);
-  tl.to('.intro__rays', { opacity: 0, scale: 1.3, duration: 1.2, ease: 'power2.inOut' }, 0);
+  tl.call(() => sound.whoosh({ dur: 1.1, f0: 240, f1: 3600, gain: 0.24, pan0: 0, pan1: 0, wet: 0.45 }), null, 0);
+  tl.to(logo.float, { scale: 3.4, opacity: 0, filter: 'blur(18px)', duration: 1.05, ease: 'power3.in' }, 0);
+  tl.to(['.intro__caption', '.intro__rays'], { opacity: 0, y: -24, duration: 0.55, ease: 'power2.in' }, 0);
+  tl.call(() => film.play(withSound), null, 0.55);
+  tl.fromTo(filmEl, { opacity: 0, scale: 1.14 }, { opacity: 1, scale: 1, duration: 1.6, ease: 'power3.out' }, 0.5);
+  tl.fromTo(dest.children, { opacity: 0, y: 24, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.4, stagger: 0.18, ease: 'expo.out' }, 0.55 + 4.4);
+  tl.to(dest, { opacity: 0, y: -14, filter: 'blur(8px)', duration: 1.2, ease: 'power2.in' }, 0.55 + 10.2);
+
+  // safety net if the video never reports "ended"
+  const guard = setTimeout(() => finish('timeout'), ((v.duration || 15) + 4) * 1000);
+  const how = await done;
+  clearTimeout(guard);
+  skipBtn.removeEventListener('click', onSkip);
+  removeEventListener('keydown', onKey);
+  v.removeEventListener('timeupdate', onTime);
+  if (how === 'skip') {
+    tl.progress(1, true);
+    film.stop();
+  }
+}
+
+// ───────────── 3 · Sydney at night: song, fireworks, the page ─────────────
+async function revealPage() {
+  const slot = document.querySelector('.hero__slot');
+  gsap.killTweensOf(logo.float);
+  gsap.set(logo.float, { clearProps: 'all' });
+  gsap.set(logo.root, { opacity: 0 });
+  slot.appendChild(logo.root);
+  revealed = true;
+
+  // the soundtrack lands right on the last frame of the arrival
+  if (sound.enabled) startSong();
+  header.play();
+
+  const tl = gsap.timeline();
+  tl.set('.hero__media', { opacity: 1 }, 0);
+  tl.to(intro, { opacity: 0, duration: reduced ? 0.6 : 1.4, ease: 'power2.inOut' }, 0.05);
   tl.to(bg, { level: 1, pulse: 0, duration: 1.6 }, 0);
   tl.to(stars, { level: 1, duration: 1.6 }, 0);
-  tl.call(() => sound.whoosh({ dur: 1.4, f0: 1400, f1: 220, gain: 0.14, pan0: -0.2, pan1: 0.5, wet: 0.4 }), null, 0);
-  tl.add(heroEnter({ reduced }), reduced ? 0.2 : 0.7);
-  tl.to('#nav', { opacity: 1, y: 0, duration: 1.2, ease: spring({ bounce: 0.32 }) }, reduced ? 0.2 : 0.95);
-  tl.to('.hero__halo', { opacity: 1, duration: 2 }, 0.8);
+  tl.call(() => hero.reveal(), null, 0.45);
+  tl.call(() => {
+    fireworks.start();
+    if (!reduced) fireworks.volley(3, { size: 1.1 });
+  }, null, 0.4);
+  tl.add(heroEnter({ reduced }), reduced ? 0.2 : 0.6);
+  tl.to('#nav', { opacity: 1, y: 0, duration: 1.2, ease: spring({ bounce: 0.32 }) }, reduced ? 0.2 : 1.0);
   await tl;
 
   intro.remove();
-  logo.root.classList.remove('is-flying');
+  film.stop();
   root.classList.remove('is-locked');
   lenis?.start();
   ScrollTrigger.refresh();
   hero.activate();
-  if (sound.enabled) sound.startAmbient();
 
   const hash = location.hash && document.querySelector(location.hash);
   if (hash) lenis ? lenis.scrollTo(hash, { offset: -90, duration: 1.8 }) : hash.scrollIntoView({ behavior: 'smooth' });

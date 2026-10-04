@@ -1,64 +1,128 @@
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { spring } from '../lib/spring.js';
-import { sound } from '../lib/audio.js';
-import { eventStart, eventEnd, liveState, timeText } from '../lib/time.js';
+import { eventStart, eventEnd, liveState, timeText, SYD } from '../lib/time.js';
 import { DEPTH } from './logo.js';
 
 gsap.registerPlugin(ScrollTrigger);
 
-// ───────────────────────── countdown ─────────────────────────
+// ───────────────────────── odometer countdown ─────────────────────────
+// Every digit is a reel. Counting down, the next (smaller) value rolls in
+// from above with a spring; wraps (0 → 9 / 5 / 2) roll through a helper slot.
+
+function reel(max) {
+  const el = document.createElement('span');
+  el.className = 'reel';
+  const strip = document.createElement('span');
+  strip.className = 'reel__strip';
+  const helper = document.createElement('i');
+  helper.textContent = String(max);
+  strip.appendChild(helper);
+  for (let d = 0; d <= 9; d++) {
+    const i = document.createElement('i');
+    i.textContent = String(d);
+    strip.appendChild(i);
+  }
+  el.appendChild(strip);
+  let cur = -1;
+  const step = () => strip.firstElementChild.getBoundingClientRect().height || 1;
+  return {
+    el,
+    set(v, animate) {
+      if (v === cur) return;
+      const prev = cur;
+      cur = v;
+      const h = step();
+      if (!animate || prev < 0) {
+        gsap.set(strip, { y: -(v + 1) * h });
+        return;
+      }
+      gsap.killTweensOf(strip);
+      if (v > prev) {
+        helper.textContent = String(v);
+        gsap.timeline()
+          .fromTo(strip, { y: -(prev + 1) * h }, { y: 0, duration: 0.75, ease: spring({ bounce: 0.32 }) })
+          .set(strip, { y: -(v + 1) * h });
+      } else {
+        gsap.fromTo(strip, { y: -(prev + 1) * h }, { y: -(v + 1) * h, duration: 0.75, ease: spring({ bounce: 0.32 }) });
+      }
+      gsap.fromTo(strip, { filter: 'blur(2.5px)' }, { filter: 'blur(0px)', duration: 0.4, ease: 'power2.out' });
+    },
+    refresh() {
+      if (cur >= 0) gsap.set(strip, { y: -(cur + 1) * step() });
+    },
+  };
+}
 
 function buildCountdown(root) {
   const cells = root.querySelector('.countdown__cells');
   const label = root.querySelector('.countdown__label');
+  const nowEl = root.querySelector('.countdown__now');
+  const sweep = root.querySelector('.countdown__sweep span');
   const units = [
-    ['d', 'Days'],
-    ['h', 'Hours'],
-    ['m', 'Minutes'],
-    ['s', 'Seconds'],
+    ['d', 'Days', [9, 9]],
+    ['h', 'Hours', [2, 9]],
+    ['m', 'Minutes', [5, 9]],
+    ['s', 'Seconds', [5, 9]],
   ];
-  cells.innerHTML = units
-    .map(([k, l]) => `<div class="cd" data-u="${k}"><div class="cd__num"><span class="cd__d"><i>0</i></span><span class="cd__d"><i>0</i></span></div><div class="cd__label">${l}</div></div>`)
-    .join('');
-  const digits = Object.fromEntries(units.map(([k]) => [k, [...cells.querySelectorAll(`[data-u="${k}"] .cd__d`)]]));
-  const prev = {};
-
-  const setDigit = (slot, ch, animate) => {
-    const cur = slot.querySelector('i:last-child');
-    if (cur && cur.textContent === ch) return;
-    if (!animate) {
-      slot.innerHTML = `<i>${ch}</i>`;
-      return;
+  const reels = {};
+  cells.innerHTML = '';
+  units.forEach(([k, l, maxes], idx) => {
+    const cell = document.createElement('div');
+    cell.className = `cd cd--${k}`;
+    const num = document.createElement('div');
+    num.className = 'cd__num';
+    reels[k] = maxes.map((mx) => reel(mx));
+    reels[k].forEach((r) => num.appendChild(r.el));
+    const lab = document.createElement('div');
+    lab.className = 'cd__label';
+    lab.textContent = l;
+    cell.append(num, lab);
+    cells.appendChild(cell);
+    if (idx < units.length - 1) {
+      const sep = document.createElement('div');
+      sep.className = 'cd__sep';
+      sep.innerHTML = '<i></i><i></i>';
+      cells.appendChild(sep);
     }
-    const n = document.createElement('i');
-    n.textContent = ch;
-    slot.appendChild(n);
-    gsap.fromTo(n, { yPercent: 80, opacity: 0, filter: 'blur(4px)' }, { yPercent: 0, opacity: 1, filter: 'blur(0px)', duration: 0.6, ease: spring({ bounce: 0.3 }) });
-    if (cur) gsap.to(cur, { yPercent: -80, opacity: 0, filter: 'blur(4px)', duration: 0.35, ease: 'power2.in', onComplete: () => cur.remove() });
-  };
+  });
+  addEventListener('resize', () => Object.values(reels).flat().forEach((r) => r.refresh()));
+  document.fonts?.ready.then(() => Object.values(reels).flat().forEach((r) => r.refresh()));
 
+  const clockFmt = new Intl.DateTimeFormat('en-AU', { timeZone: SYD, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZoneName: 'short' });
   let mode = '';
+  let lastSec = -1;
+
   const render = (animate = true) => {
     const now = new Date();
+    if (nowEl) nowEl.textContent = clockFmt.format(now).replace(/\b(am|pm)\b/g, (m) => m.toUpperCase());
     if (now < eventStart) {
       if (mode !== 'pre') {
         mode = 'pre';
-        label.textContent = 'The championship begins in';
         root.classList.remove('is-live', 'is-over');
       }
-      let diff = Math.max(0, eventStart - now) / 1000;
-      const vals = { d: Math.floor(diff / 86400), h: 0, m: 0, s: 0 };
+      let diff = Math.max(0, Math.floor((eventStart - now) / 1000));
+      const vals = { d: Math.floor(diff / 86400) };
       diff -= vals.d * 86400;
       vals.h = Math.floor(diff / 3600);
       diff -= vals.h * 3600;
       vals.m = Math.floor(diff / 60);
-      vals.s = Math.floor(diff - vals.m * 60);
+      vals.s = diff - vals.m * 60;
       for (const k of Object.keys(vals)) {
-        const str = String(vals[k]).padStart(2, '0').slice(-2);
-        if (prev[k] !== str) {
-          digits[k].forEach((slot, i) => setDigit(slot, str[i], animate));
-          prev[k] = str;
+        const str = String(Math.min(99, vals[k])).padStart(2, '0');
+        reels[k][0].set(+str[0], animate);
+        reels[k][1].set(+str[1], animate);
+      }
+      if (vals.s !== lastSec && animate) {
+        lastSec = vals.s;
+        const cell = cells.querySelector('.cd--s');
+        cell.classList.remove('is-tick');
+        void cell.offsetWidth;
+        cell.classList.add('is-tick');
+        if (vals.s === 0) {
+          root.classList.remove('is-minute');
+          void root.offsetWidth;
+          root.classList.add('is-minute');
         }
       }
     } else if (now < eventEnd) {
@@ -67,95 +131,97 @@ function buildCountdown(root) {
       if (mode !== text) {
         mode = text;
         root.classList.add('is-live');
-        label.innerHTML = '<span class="live-dot"></span> Happening now';
-        cells.innerHTML = `<p class="countdown__now">${text}</p>`;
+        label.innerHTML = '<span class="live-dot"></span> Happening now in Sydney';
+        cells.innerHTML = `<p class="countdown__live">${text}</p>`;
       }
     } else if (mode !== 'over') {
       mode = 'over';
       root.classList.add('is-over');
       label.textContent = 'AusMC 2026 · That’s a wrap';
-      cells.innerHTML = '<p class="countdown__now">Thank you, Sydney. See you at the next edition.</p>';
+      cells.innerHTML = '<p class="countdown__live">Thank you, Sydney. See you at the next edition.</p>';
     }
   };
+
+  // a hairline "second hand" sweeping continuously in step with the clock
+  const sweepTick = () => {
+    if (sweep && mode === 'pre') sweep.style.transform = `scaleX(${(Date.now() % 1000) / 1000})`;
+    requestAnimationFrame(sweepTick);
+  };
+  requestAnimationFrame(sweepTick);
+
   render(false);
-  setInterval(render, 1000);
+  // align to the real second boundary so digits roll exactly on the tick
+  setTimeout(() => {
+    render();
+    setInterval(render, 1000);
+  }, 1000 - (Date.now() % 1000) + 8);
 }
 
 // ───────────────────────── badge life ─────────────────────────
 
 export function initHero({ logo, reduced }) {
   buildCountdown(document.querySelector('.countdown'));
-
   const hero = document.querySelector('.hero');
   const finePointer = matchMedia('(pointer: fine)').matches;
 
   return {
-    /** Called once the badge has landed in its hero slot */
+    /** the badge drops into the hero, its layers settling into depth */
+    reveal() {
+      if (reduced) {
+        gsap.fromTo(logo.root, { opacity: 0 }, { opacity: 1, duration: 0.6 });
+        return;
+      }
+      gsap.set(logo.root, { opacity: 1 });
+      gsap.fromTo(logo.float, { scale: 0.5, y: -50, rotationX: 50, opacity: 0 }, { scale: 1, y: 0, rotationX: 0, opacity: 1, duration: 1.6, ease: spring({ bounce: 0.35 }) });
+      Object.entries(logo.pieces).forEach(([id, el], k) => {
+        gsap.fromTo(el, { z: (DEPTH[id] || 0) * 5 + 140 }, { z: DEPTH[id] || 0, duration: 1.5, delay: 0.08 + k * 0.03, ease: spring({ bounce: 0.3 }) });
+      });
+      gsap.fromTo(logo.glow, { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 1.6, ease: 'power2.out' });
+    },
+
     activate() {
       if (reduced) return;
-      // separate the layers in depth so tilting reveals real parallax
-      Object.entries(logo.pieces).forEach(([id, el]) => {
-        gsap.to(el, { z: DEPTH[id] || 0, duration: 1.6, ease: spring({ bounce: 0.25 }), delay: 0.1 });
-      });
-
-      gsap.to(logo.float, { y: -16, duration: 3.4, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+      gsap.to(logo.float, { y: -10, duration: 3.4, ease: 'sine.inOut', yoyo: true, repeat: -1 });
       gsap.to(logo.glow, { scale: 1.08, opacity: 0.85, duration: 2.8, ease: 'sine.inOut', yoyo: true, repeat: -1 });
-
       if (finePointer) {
         const rx = gsap.quickTo(logo.tilt, 'rotationX', { duration: 1.1, ease: 'power3' });
         const ry = gsap.quickTo(logo.tilt, 'rotationY', { duration: 1.1, ease: 'power3' });
         addEventListener('pointermove', (e) => {
-          const r = hero.getBoundingClientRect();
-          if (r.bottom < 0) return;
-          const nx = e.clientX / innerWidth - 0.5;
-          const ny = e.clientY / innerHeight - 0.5;
-          ry(nx * 30);
-          rx(-ny * 22);
+          if (hero.getBoundingClientRect().bottom < 0) return;
+          ry((e.clientX / innerWidth - 0.5) * 34);
+          rx(-(e.clientY / innerHeight - 0.5) * 24);
         }, { passive: true });
       } else {
-        gsap.fromTo(logo.tilt, { rotationY: -14, rotationX: 6 }, { rotationY: 14, rotationX: -6, duration: 4.2, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+        gsap.fromTo(logo.tilt, { rotationY: -16, rotationX: 6 }, { rotationY: 16, rotationX: -6, duration: 4.2, ease: 'sine.inOut', yoyo: true, repeat: -1 });
       }
-
-      // a gleam every few seconds
       const band = logo.gleam.firstElementChild;
-      const gleam = () => {
+      setInterval(() => {
         if (document.hidden || hero.getBoundingClientRect().bottom < 0) return;
         gsap.fromTo(band, { xPercent: -160 }, { xPercent: 160, duration: 1.3, ease: 'power2.inOut' });
         gsap.fromTo(logo.rim, { opacity: 0, rotation: -100 }, { opacity: 0.9, rotation: 260, duration: 1.8, ease: 'power2.inOut', onComplete: () => gsap.to(logo.rim, { opacity: 0, duration: 0.5 }) });
-      };
-      setInterval(gleam, 7000);
+      }, 7000);
 
-      // scroll: the badge drifts back, title lifts
-      gsap.to('.hero__visual', {
-        yPercent: 18,
-        scale: 0.86,
-        opacity: 0.35,
-        ease: 'none',
-        scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: 0.6 },
-      });
-      gsap.to('.hero__copy', {
-        yPercent: -10,
-        opacity: 0.2,
-        ease: 'none',
-        scrollTrigger: { trigger: hero, start: '35% top', end: 'bottom top', scrub: 0.6 },
-      });
+      // scroll: the night sky pushes in and dims while the content lifts away
+      const st = { trigger: hero, start: 'top top', end: 'bottom top', scrub: 0.6 };
+      gsap.to('.hero__video', { scale: 1.12, ease: 'none', scrollTrigger: st });
+      gsap.to('.hero__dim', { opacity: 0.7, ease: 'none', scrollTrigger: { ...st } });
+      gsap.to('.hero__inner', { yPercent: -10, opacity: 0.15, ease: 'none', scrollTrigger: { ...st, start: '30% top' } });
     },
   };
 }
 
 export function heroEnter({ reduced }) {
   const tl = gsap.timeline();
-  const items = ['.hero__eyebrow', '.hero__name', '.hero__meta li', '.countdown', '.hero__ctas > *', '.hero__scroll'];
+  const items = ['.hero__eyebrow', '.hero__name', '.countdown', '.hero__meta li', '.hero__ctas > *', '.hero__scroll'];
   if (reduced) {
     tl.to(['.hero__title-main', '.hero__title-year', ...items], { opacity: 1, y: 0, duration: 0.6, stagger: 0.04 });
     return tl;
   }
-  tl.fromTo('.hero__title-main', { '--w': 62, opacity: 0, y: 40, filter: 'blur(12px) drop-shadow(0px 10px 40px rgba(60,100,255,0))' }, { '--w': 125, opacity: 1, y: 0, filter: 'blur(0px) drop-shadow(0px 10px 40px rgba(60,100,255,0.35))', duration: 1.6, ease: 'expo.out' }, 0);
-  tl.fromTo('.hero__title-year', { opacity: 0, y: 30, rotation: -6, filter: 'blur(10px) drop-shadow(0px 8px 36px rgba(228,0,43,0))' }, { opacity: 1, y: 0, rotation: 0, filter: 'blur(0px) drop-shadow(0px 8px 36px rgba(228,0,43,0.45))', duration: 1.3, ease: spring({ bounce: 0.3 }) }, 0.25);
-  tl.fromTo(items, { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 1.1, ease: spring({ bounce: 0.28 }), stagger: 0.07 }, 0.3);
+  tl.fromTo('.hero__title-main', { '--w': 62, opacity: 0, y: 40, filter: 'blur(12px) drop-shadow(0px 10px 40px rgba(60,100,255,0))' }, { '--w': 125, opacity: 1, y: 0, filter: 'blur(0px) drop-shadow(0px 10px 40px rgba(60,100,255,0.35))', duration: 1.6, ease: 'expo.out' }, 0.15);
+  tl.fromTo('.hero__title-year', { opacity: 0, y: 30, rotation: -6, filter: 'blur(10px) drop-shadow(0px 8px 36px rgba(228,0,43,0))' }, { opacity: 1, y: 0, rotation: 0, filter: 'blur(0px) drop-shadow(0px 8px 36px rgba(228,0,43,0.45))', duration: 1.3, ease: spring({ bounce: 0.3 }) }, 0.35);
+  tl.fromTo(items, { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 1.1, ease: spring({ bounce: 0.28 }), stagger: 0.07 }, 0.4);
   tl.call(() => {
-    document.querySelectorAll('.cd').forEach((c, i) => gsap.fromTo(c, { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.9, delay: i * 0.06, ease: spring({ bounce: 0.45 }) }));
-    sound.chime(81, { gain: 0.05, dur: 1.5 });
-  }, null, 0.6);
+    document.querySelectorAll('.reel').forEach((r, i) => gsap.fromTo(r, { yPercent: -70, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 1.1, delay: i * 0.05, ease: spring({ bounce: 0.4 }) }));
+  }, null, 0.65);
   return tl;
 }

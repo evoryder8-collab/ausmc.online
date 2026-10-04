@@ -43,9 +43,7 @@
     <!-- Living backdrop -->
     <canvas id="bg" class="bg" aria-hidden="true"></canvas>
     <canvas id="stars" class="stars" aria-hidden="true"></canvas>
-    <div class="orbs" aria-hidden="true">
-      <span class="orb orb--1"></span><span class="orb orb--2"></span><span class="orb orb--3"></span><span class="orb orb--4"></span>
-    </div>
+    <div class="lyrics" aria-hidden="true"></div>
     <div class="grain" aria-hidden="true"></div>
 
     <!-- 1 · Sound portal -->
@@ -74,6 +72,15 @@
     <!-- 2 · Logo intro stage -->
     <div id="intro" class="intro" aria-hidden="true">
       <div class="intro__bg"></div>
+      <div class="intro__film">
+        <video class="intro__video" playsinline preload="auto" poster="./media/plane-poster.jpg"></video>
+        <div class="intro__grade"></div>
+        <div class="intro__dest">
+          <span>Now arriving</span>
+          <strong>Sydney, Australia</strong>
+          <small>33.8688° S · 151.2093° E</small>
+        </div>
+      </div>
       <div class="intro__rays"></div>
       <div class="intro__shake">
         <div class="intro__slot"></div>
@@ -109,30 +116,33 @@
     <main id="main">
       <!-- Hero -->
       <section class="hero" id="top" aria-labelledby="hero-title">
+        <div class="hero__media" aria-hidden="true">
+          <video class="hero__video" muted loop playsinline preload="auto" poster="./media/header-poster.jpg"></video>
+          <div class="hero__dim"></div>
+          <canvas class="hero__fireworks"></canvas>
+          <div class="hero__shade"></div>
+        </div>
         <div class="hero__inner">
-          <div class="hero__copy">
-            <p class="hero__eyebrow glass-chip"><span class="dot"></span> Official Schedule</p>
-            <h1 class="hero__title" id="hero-title">
-              <span class="hero__title-main">AusMC</span>
-              <span class="hero__title-year">2026</span>
-            </h1>
-            <p class="hero__name">Australian Massage Championship</p>
-            <ul class="hero__meta">
-              <li class="glass-chip" data-icon="calendar">Fri 9 – Sun 11 October 2026</li>
-              <li class="glass-chip" data-icon="pin">Cockatoo Island, Sydney</li>
-            </ul>
-            <div class="countdown glass" data-lens aria-live="polite">
-              <p class="countdown__label">The championship begins in</p>
-              <div class="countdown__cells"></div>
-            </div>
-            <div class="hero__ctas">
-              <a href="#schedule" class="btn btn--primary">View Schedule <span data-icon="down"></span></a>
-              <a href="#venue" class="btn btn--ghost glass">Venue &amp; Map</a>
-            </div>
+          <div class="hero__slot"></div>
+          <p class="hero__eyebrow glass-chip"><span class="dot"></span> Official Schedule</p>
+          <h1 class="hero__title" id="hero-title">
+            <span class="hero__title-main">AusMC</span>
+            <span class="hero__title-year">2026</span>
+          </h1>
+          <p class="hero__name">Australian Massage Championship</p>
+          <div class="countdown glass" data-lens>
+            <p class="countdown__label"><span class="lg">Countdown to Day 1 · Friday 9 October, 9:00 AM Sydney time</span><span class="sm">Day 1 · Fri 9 Oct · 9:00 AM Sydney</span></p>
+            <div class="countdown__cells" role="timer" aria-live="off"></div>
+            <div class="countdown__sweep" aria-hidden="true"><span></span></div>
+            <p class="countdown__clock"><span class="countdown__pin" data-icon="clock"></span>Sydney now <time class="countdown__now"></time></p>
           </div>
-          <div class="hero__visual">
-            <div class="hero__halo" aria-hidden="true"></div>
-            <div class="hero__slot"></div>
+          <ul class="hero__meta">
+            <li class="glass-chip" data-icon="calendar">Fri 9 – Sun 11 October 2026</li>
+            <li class="glass-chip" data-icon="pin">Cockatoo Island, Sydney</li>
+          </ul>
+          <div class="hero__ctas">
+            <a href="#schedule" class="btn btn--primary">View Schedule <span data-icon="down"></span></a>
+            <a href="#venue" class="btn btn--ghost glass">Venue &amp; Map</a>
           </div>
         </div>
         <a href="#schedule" class="hero__scroll" aria-label="Scroll to schedule"><span></span></a>
@@ -177,6 +187,9 @@
     </main>
 
     <footer class="footer">
+      <div class="footer__media" aria-hidden="true">
+        <video class="footer__video" muted loop playsinline preload="none" poster="./media/footer-poster.jpg"></video>
+      </div>
       <div class="footer__mark" aria-hidden="true">AusMC 2026</div>
       <p class="footer__line">Cockatoo Island <i></i> Sydney <i></i> Australia</p>
       <p class="footer__small">All times are Sydney time (AEDT · UTC+11) · © 2026 Australian Massage Championship</p>
@@ -184,6 +197,7 @@
     </footer>
 
     <div class="live-toast glass" hidden></div>
+    <button type="button" class="tap-sound glass" hidden><span data-icon="play"></span> Tap to play the AusMC 2026 soundtrack</button>
 
     <noscript><p style="padding:2rem;color:#fff;font-family:system-ui">AusMC 2026 — the official schedule needs JavaScript enabled.</p></noscript>
     <script type="module" src="/src/main.js"></script>
