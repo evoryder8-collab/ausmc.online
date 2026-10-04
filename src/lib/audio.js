@@ -68,7 +68,17 @@ class SoundEngine {
       if (document.hidden) this.ctx.suspend();
       else if (this.enabled) this.ctx.resume();
     });
+    // iOS can pause ("interrupt") the context on its own — a call, Siri, the
+    // soundtrack element taking over; every tap is a chance to wake it again
+    for (const type of ['pointerup', 'touchend', 'keydown']) {
+      addEventListener(type, () => this.wake(), { capture: true, passive: true });
+    }
     return ctx;
+  }
+
+  /** resume a paused context (only works inside a user gesture on iOS) */
+  wake() {
+    if (this.enabled && this.ctx && this.ctx.state !== 'running') this.ctx.resume().catch(() => {});
   }
 
   impulse(seconds, decay) {
@@ -557,7 +567,7 @@ class SoundEngine {
     const dec = (n) => fetch(`${base}${n}.m4a`).then((r) => r.arrayBuffer())
       .then((ab) => new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 48000).decodeAudioData(ab)).catch(() => null);
     const pools = { clinks: ['clink-a2', 'clink-b2', 'clink-b4', 'clink-b5', 'clink-c2'], cheer: ['cheer-195'] };
-    for (const [k, list] of Object.entries(pools)) Promise.all(list.map(dec)).then((b) => (this.sceneBufs[k] = b.filter(Boolean)));
+    this.scenesReady = Promise.all(Object.entries(pools).map(([k, list]) => Promise.all(list.map(dec)).then((b) => (this.sceneBufs[k] = b.filter(Boolean)))));
   }
 
   /** fade out whatever the current location scene is playing */
@@ -589,9 +599,18 @@ class SoundEngine {
    * tight, human spread (not perfectly together), each a little different in
    * loudness, position and pitch. `cheer` adds the small applause.
    */
-  toast({ cheer = false } = {}) {
+  toast({ cheer = false, retry = true } = {}) {
+    if (!this.enabled || !this.ctx) return;
     const clinks = this.sceneBufs?.clinks;
-    if (!this.live || !clinks?.length) return;
+    const ready = clinks?.length && (!cheer || this.sceneBufs.cheer?.length);
+    // a paused context or samples still on their way: try once more when ready
+    if (!this.live || !ready) {
+      if (!retry) return;
+      const waits = [this.scenesReady];
+      if (this.ctx.state !== 'running') waits.push(this.ctx.resume());
+      Promise.all(waits).then(() => this.toast({ cheer, retry: false })).catch(() => {});
+      return;
+    }
     const { ctx } = this;
     const bus = this.newScene();
     const t0 = ctx.currentTime + 0.02;

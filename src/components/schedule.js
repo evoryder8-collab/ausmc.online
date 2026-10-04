@@ -229,10 +229,18 @@ export function initSchedule({ lenis, reduced, glass }) {
     const id = b.dataset.gotoLocation;
     document.dispatchEvent(new CustomEvent('ausmc:location', { detail: id }));
     // the celebration plays once the page has finished its trip to the map
-    const arrived = () => document.dispatchEvent(new CustomEvent('ausmc:arrived', { detail: id }));
+    let done = false;
+    const arrived = () => {
+      if (done) return;
+      done = true;
+      document.dispatchEvent(new CustomEvent('ausmc:arrived', { detail: id }));
+    };
     const v = document.getElementById('venue');
     if (lenis) lenis.scrollTo(v, { offset: -80, duration: 1.6, onComplete: arrived });
-    else { v.scrollIntoView({ behavior: 'smooth' }); setTimeout(arrived, 900); }
+    else v.scrollIntoView({ behavior: 'smooth' });
+    // a touch mid-trip stops the glide without onComplete: still celebrate
+    // as long as the map has come into view
+    setTimeout(() => v.getBoundingClientRect().top < innerHeight * 0.6 && arrived(), lenis ? 1900 : 900);
   });
 
   setupLanding({ reduced });

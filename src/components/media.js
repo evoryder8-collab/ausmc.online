@@ -4,7 +4,7 @@ const BASE = import.meta.env.BASE_URL;
 // phones and small tablets get the 720p renditions
 const SMALL = Math.min(screen.width, screen.height) < 820 || innerWidth < 900;
 // bump when media files are re-encoded so browsers and the CDN fetch fresh copies
-export const MEDIA_V = 6;
+export const MEDIA_V = 7;
 export const videoSrc = (name) => `${BASE}media/${name}-${SMALL ? 720 : 1080}.mp4?v=${MEDIA_V}`;
 
 /**
