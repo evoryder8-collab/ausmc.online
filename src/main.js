@@ -1,5 +1,6 @@
 import '@fontsource-variable/archivo/wdth.css';
 import '@fontsource-variable/geist';
+import '@fontsource-variable/jost';
 import '@fontsource/instrument-serif/400.css';
 import '@fontsource/instrument-serif/400-italic.css';
 import 'lenis/dist/lenis.css';
@@ -226,7 +227,6 @@ async function begin(withSound, btn) {
   begun = true;
   // everything that must play with sound later is unlocked inside this tap (iOS)
   sound.setEnabled(withSound);
-  if (withSound) sound.startHarbour({ level: 1, fade: 1.2 }); // Sydney harbour from the first tap
   film.prime(withSound);
   if (withSound) song.prime();
   syncToggle();
@@ -244,7 +244,10 @@ async function begin(withSound, btn) {
 
   await logo.ready;
   intro.classList.add('is-active');
-  const { skipped } = await playIntro({ logo, stage: intro, fx, bg, stars, reduced });
+  // the harbour rises in one second before the logo assembly completes
+  const harbour = () => withSound && sound.startHarbour({ level: 1, fade: 1.2 });
+  const { skipped } = await playIntro({ logo, stage: intro, fx, bg, stars, reduced, onNearEnd: harbour });
+  harbour(); // (no-op if already playing, e.g. when the logo was skipped)
   if (!skipped && !reduced) await playFilm(withSound);
   await revealPage();
 }

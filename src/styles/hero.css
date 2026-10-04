@@ -75,19 +75,20 @@
   padding-right: 0.04em;
 }
 .hero__title-year {
-  font-family: var(--f-serif);
-  font-style: italic;
-  font-weight: 400;
-  font-size: clamp(60px, 9.6vw, 148px);
-  letter-spacing: -0.02em;
-  background: linear-gradient(100deg, #ffffff 5%, #ffc2cd 30%, var(--red-hi) 55%, var(--red) 75%, #ffffff 100%);
+  font-family: var(--f-display);
+  font-stretch: 125%;
+  font-weight: 200;
+  font-size: clamp(46px, 7.2vw, 112px);
+  letter-spacing: 0.06em;
+  line-height: 0.9;
+  background: linear-gradient(100deg, #ffffff 5%, #ffd0d9 35%, var(--red-hi) 62%, #ffffff 100%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   filter: drop-shadow(0 8px 36px rgba(228, 0, 43, 0.45));
   animation: sheen 6s ease-in-out infinite alternate;
-  padding-right: 0.1em;
+  padding-right: 0.02em;
 }
 .hero__name {
   margin-top: 14px;
@@ -252,7 +253,7 @@
   .hero__slot { width: min(38vw, 160px); }
   .hero__title { flex-direction: column; align-items: center; }
   .hero__title-main { font-size: clamp(54px, 18vw, 92px); }
-  .hero__title-year { font-size: clamp(60px, 20vw, 104px); margin-top: -0.06em; }
+  .hero__title-year { font-size: clamp(44px, 15vw, 78px); margin-top: 0.06em; letter-spacing: 0.1em; padding-left: 0.1em; }
   .hero__name { letter-spacing: 0.22em; font-size: 11.5px; }
   .countdown { padding: 14px 10px 12px; border-radius: 28px; }
   .countdown__label .sm { display: none; }

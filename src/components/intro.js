@@ -15,7 +15,7 @@ const SPEED = 2.5;
  * continent slams down, the Union Jack stamps on and the Southern Cross
  * arrives as shooting stars — then a gleam, bloom and glow.
  */
-export function playIntro({ logo, stage, fx, bg, stars, reduced }) {
+export function playIntro({ logo, stage, fx, bg, stars, reduced, onNearEnd }) {
   return new Promise((resolve) => {
     const P = logo.pieces;
     const shakeEl = stage.querySelector('.intro__shake');
@@ -213,6 +213,8 @@ export function playIntro({ logo, stage, fx, bg, stars, reduced }) {
       tl.to({}, { duration: 0.01 }, F + 1.75);
     }
 
+    // one real second before the assembly ends (timeline time is pre-speed-up)
+    tl.call(() => onNearEnd?.(), null, Math.max(0, tl.duration() - (reduced ? 1 : SPEED)));
     if (!reduced) tl.timeScale(SPEED);
 
     function onSkip() {
