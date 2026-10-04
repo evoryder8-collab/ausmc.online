@@ -3,7 +3,9 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 const BASE = import.meta.env.BASE_URL;
 // phones and small tablets get the 720p renditions
 const SMALL = Math.min(screen.width, screen.height) < 820 || innerWidth < 900;
-export const videoSrc = (name) => `${BASE}media/${name}-${SMALL ? 720 : 1080}.mp4`;
+// bump when media files are re-encoded so browsers and the CDN fetch fresh copies
+export const MEDIA_V = 4;
+export const videoSrc = (name) => `${BASE}media/${name}-${SMALL ? 720 : 1080}.mp4?v=${MEDIA_V}`;
 
 /**
  * iOS only lets media play with sound if play() was first called inside a
@@ -89,7 +91,7 @@ export function createLoop(video, name, { lazy = false } = {}) {
 // ───────────── the soundtrack ─────────────
 export function createSong({ onStart, onPause } = {}) {
   const audio = new Audio();
-  audio.src = `${BASE}media/soundtrack.m4a`;
+  audio.src = `${BASE}media/soundtrack.m4a?v=${MEDIA_V}`;
   audio.preload = 'auto';
   audio.setAttribute('playsinline', '');
   let wanted = false;
