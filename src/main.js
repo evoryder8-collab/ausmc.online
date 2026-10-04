@@ -140,6 +140,7 @@ function syncFireworks(m, ms) {
 
 sound.preloadHarbour(`${import.meta.env.BASE_URL}media/harbour-ambience.m4a`);
 sound.preloadFireworks(`${import.meta.env.BASE_URL}media/sfx/`);
+sound.preloadScenes(`${import.meta.env.BASE_URL}media/sfx/`);
 const HARBOUR_BED = 0.32; // level under the soundtrack
 
 const tapSound = document.querySelector('.tap-sound');

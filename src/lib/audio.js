@@ -130,7 +130,7 @@ class SoundEngine {
     this.fwWet.gain.setTargetAtTime(v, t, 0.12);
   }
 
-  route(node, { pan = 0, wet = 0.3, gain = 1, fw = false } = {}) {
+  route(node, { pan = 0, wet = 0.3, gain = 1, fw = false, bus = null } = {}) {
     const { ctx } = this;
     const g = ctx.createGain();
     g.gain.value = gain;
@@ -142,12 +142,12 @@ class SoundEngine {
       g.connect(p);
       out = p;
     }
-    out.connect(fw ? this.fwDry : this.dry);
+    out.connect(bus ? bus.dry : fw ? this.fwDry : this.dry);
     if (wet > 0) {
       const w = ctx.createGain();
       w.gain.value = wet;
       out.connect(w);
-      w.connect(fw ? this.fwWet : this.verbIn);
+      w.connect(bus ? bus.wet : fw ? this.fwWet : this.verbIn);
     }
     return { gain: g, out };
   }
@@ -547,6 +547,81 @@ class SoundEngine {
     this.route(g, { fw: true, pan, wet });
     src.start(t);
     return true;
+  }
+
+  // ───── location scenes (map interface): each gets its own bus so a new
+  // location can smoothly fade out the previous one's sounds ─────
+  preloadScenes(base) {
+    if (this.sceneBufs) return;
+    this.sceneBufs = {};
+    const dec = (n) => fetch(`${base}${n}.m4a`).then((r) => r.arrayBuffer())
+      .then((ab) => new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 48000).decodeAudioData(ab)).catch(() => null);
+    const pools = { clinks: ['clink-a2', 'clink-b2', 'clink-b4', 'clink-b5', 'clink-c2'], cheer: ['cheer-195'] };
+    for (const [k, list] of Object.entries(pools)) Promise.all(list.map(dec)).then((b) => (this.sceneBufs[k] = b.filter(Boolean)));
+  }
+
+  /** fade out whatever the current location scene is playing */
+  endScene(fade = 0.6) {
+    const sc = this.scene;
+    if (!sc || !this.ctx) return;
+    this.scene = null;
+    const t = this.ctx.currentTime;
+    for (const g of [sc.dry, sc.wet]) {
+      g.gain.cancelScheduledValues(t);
+      g.gain.setValueAtTime(g.gain.value, t);
+      g.gain.linearRampToValueAtTime(0, t + fade);
+    }
+    setTimeout(() => { sc.dry.disconnect(); sc.wet.disconnect(); }, (fade + 0.2) * 1000);
+  }
+
+  newScene() {
+    this.endScene();
+    const dry = this.ctx.createGain();
+    const wet = this.ctx.createGain();
+    dry.connect(this.dry);
+    wet.connect(this.verbIn);
+    this.scene = { dry, wet };
+    return this.scene;
+  }
+
+  /**
+   * A table of glasses meeting in the middle: every clink lands within a
+   * tight, human spread (not perfectly together), each a little different in
+   * loudness, position and pitch. `cheer` adds the small applause.
+   */
+  toast({ cheer = false } = {}) {
+    const clinks = this.sceneBufs?.clinks;
+    if (!this.live || !clinks?.length) return;
+    const { ctx } = this;
+    const bus = this.newScene();
+    const t0 = ctx.currentTime + 0.02;
+    const order = clinks.map((b, i) => [b, Math.random(), i]).sort((a, b) => a[1] - b[1]);
+    const n = order.length;
+    order.forEach(([buf], k) => {
+      // first glass on the beat; the rest cluster just after (≈10–85ms)
+      const g1 = (Math.random() + Math.random() + Math.random()) / 3; // soft bell-curve
+      const off = k === 0 ? 0 : 0.01 + g1 * 0.075;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.value = 0.975 + Math.random() * 0.05;
+      const g = ctx.createGain();
+      g.gain.value = 0.16 * (0.75 + Math.random() * 0.4);
+      src.connect(g);
+      const pan = ((k / Math.max(1, n - 1)) * 2 - 1) * 0.55 + (Math.random() - 0.5) * 0.15;
+      this.route(g, { pan, wet: 0.22, bus });
+      src.start(t0 + off);
+    });
+    const ch = this.sceneBufs?.cheer?.[0];
+    if (cheer && ch) {
+      const src = ctx.createBufferSource();
+      src.buffer = ch;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(0.3, t0 + 0.12);
+      src.connect(g);
+      this.route(g, { wet: 0.12, bus });
+      src.start(t0 + 0.04);
+    }
   }
 
   /** soft rising hiss of a shell climbing (broad filter, no whistle) */

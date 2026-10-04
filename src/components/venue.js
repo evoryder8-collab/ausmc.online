@@ -136,9 +136,16 @@ export function initVenue({ lenis, reduced, glass }) {
   };
   renderPanel(false);
 
-  const select = (id, { fly = true } = {}) => {
+  /** sounds that belong to each location in the map interface */
+  const sceneFor = (id) => {
+    if (id === 'dinner') sound.toast(); // glasses together
+    else sound.endScene(); // (championship sounds to come) — dinner fades out
+  };
+
+  const select = (id, { fly = true, sfx = false } = {}) => {
     if (!LOCATIONS[id]) return;
     const changed = id !== current;
+    if (changed && sfx) sceneFor(id);
     current = id;
     switcher.querySelectorAll('button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.loc === id)));
     if (changed) renderPanel(true);
@@ -150,9 +157,13 @@ export function initVenue({ lenis, reduced, glass }) {
     const b = e.target.closest('[data-loc]');
     if (!b) return;
     sound.tap();
-    select(b.dataset.loc);
+    select(b.dataset.loc, { sfx: true });
   });
-  document.addEventListener('ausmc:location', (e) => select(e.detail));
+  // from the schedule's "Show on map": select quietly, celebrate on arrival
+  document.addEventListener('ausmc:location', (e) => select(typeof e.detail === 'string' ? e.detail : e.detail.id));
+  document.addEventListener('ausmc:arrived', (e) => {
+    if (e.detail === 'dinner') sound.toast({ cheer: true });
+  });
 
   // entrance
   if (!reduced) {
@@ -230,7 +241,7 @@ export function initVenue({ lenis, reduced, glass }) {
         el.addEventListener('click', (e) => {
           e.stopPropagation();
           sound.tap();
-          select(loc.id, { fly: loc.id !== current });
+          select(loc.id, { fly: loc.id !== current, sfx: true });
           openChooser(loc);
         });
         markers[loc.id] = new Marker({ element: el, anchor: 'center' }).setLngLat(loc.lngLat).addTo(map);

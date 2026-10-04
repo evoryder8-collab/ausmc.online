@@ -226,9 +226,13 @@ export function initSchedule({ lenis, reduced, glass }) {
     const b = e.target.closest('[data-goto-location]');
     if (!b) return;
     sound.tap();
-    document.dispatchEvent(new CustomEvent('ausmc:location', { detail: b.dataset.gotoLocation }));
+    const id = b.dataset.gotoLocation;
+    document.dispatchEvent(new CustomEvent('ausmc:location', { detail: id }));
+    // the celebration plays once the page has finished its trip to the map
+    const arrived = () => document.dispatchEvent(new CustomEvent('ausmc:arrived', { detail: id }));
     const v = document.getElementById('venue');
-    lenis ? lenis.scrollTo(v, { offset: -80, duration: 1.6 }) : v.scrollIntoView({ behavior: 'smooth' });
+    if (lenis) lenis.scrollTo(v, { offset: -80, duration: 1.6, onComplete: arrived });
+    else { v.scrollIntoView({ behavior: 'smooth' }); setTimeout(arrived, 900); }
   });
 
   setupLanding({ reduced });
