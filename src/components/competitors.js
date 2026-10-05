@@ -94,11 +94,13 @@ function build() {
     <div class="cp__sheet" data-lenis-prevent>
       <header class="cp__bar">
         <button type="button" class="cp__back glass">${icon('back')}<span>Schedule</span></button>
-        <span class="cp__bar-title" aria-hidden="true">Competitors</span>
+        <span class="cp__bar-mid">
+          <span class="cp__bar-title" aria-hidden="true">Competitors</span>
+          <button type="button" class="cp__x" aria-label="Close competitors" tabindex="-1">${icon('x')}</button>
+        </span>
         <span class="cp__bar-count" aria-hidden="true"></span>
       </header>
       <div class="cp__hero">
-        <p class="cp__kicker">AusMC 2026 · The field</p>
         <h2 class="cp__title" id="cp-title">The <em>Competitors</em></h2>
         <p class="cp__sub"><b>${COMPETITORS.length}</b> therapists <span>·</span> <b>${NATIONS.length}</b> nations <span>·</span> <b>${Object.keys(CATEGORIES).length}</b> categories <span>·</span> <b>${ROUNDS.length}</b> rounds</p>
         <div class="cp__nations" role="group" aria-label="Filter by nation">
@@ -240,6 +242,7 @@ function refreshLive() {
 function wire() {
   const { input, clear } = ui;
   root.querySelector('.cp__back').addEventListener('click', () => close());
+  root.querySelector('.cp__x').addEventListener('click', () => { sound.tap(); close(); });
   ui.scrim.addEventListener('click', () => close());
   root.addEventListener('keydown', (e) => e.key === 'Escape' && close());
 
@@ -312,7 +315,11 @@ function wire() {
   // the bar's title appears once the big one has scrolled away
   const title = root.querySelector('.cp__title');
   ui.sheet.addEventListener('scroll', () => {
-    root.classList.toggle('is-scrolled', title.getBoundingClientRect().bottom < ui.bar.getBoundingClientRect().bottom);
+    const scrolled = title.getBoundingClientRect().bottom < ui.bar.getBoundingClientRect().bottom;
+    if (scrolled !== root.classList.contains('is-scrolled')) {
+      root.classList.toggle('is-scrolled', scrolled);
+      root.querySelector('.cp__x').tabIndex = scrolled ? 0 : -1;
+    }
   }, { passive: true });
   document.addEventListener('ausmc:tz', refreshTimes);
   addEventListener('popstate', () => {
