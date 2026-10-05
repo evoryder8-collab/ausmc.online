@@ -30,7 +30,6 @@ import { initVenue } from './components/venue.js';
 import { createLyrics } from './components/lyrics.js';
 import { createFilm, createLoop, createSong } from './components/media.js';
 import { Fireworks } from './lib/fireworks.js';
-import { watchReading } from './components/reading.js';
 
 gsap.registerPlugin(ScrollTrigger);
 if (import.meta.env.DEV) window.__ausmc = { gsap, ScrollTrigger };
@@ -520,36 +519,59 @@ function kangarooOnMap() {
 // …and when someone settles in to read the schedule, he leans in with a tip
 // about the reminder bells (once, and only for visitors who haven't used one)
 const ROO_LINE = `${import.meta.env.BASE_URL}media/sfx/roo-psst.m4a`;
+// (once per visit, the first time Day 2's bells are on screen and the scroll
+// comes to rest)
 function kangarooTip() {
-  if (reduced) return;
-  try { if (JSON.parse(localStorage.getItem('ausmc:reminders') || '[]').length) return; } catch { /* private mode */ }
+  const day2 = document.getElementById('day-2');
+  if (reduced || !day2) return;
   sound.preloadLine(ROO_LINE);
-  let stop = null;
-  const found = (e) => { if (e.target.closest('.remind')) disarm(); }; // already found the bells
-  const disarm = () => {
-    stop?.();
-    document.removeEventListener('click', found);
-  };
-  document.addEventListener('click', found);
-  stop = watchReading(async () => {
-    disarm();
+  let calm = 0;
+  let done = false;
+  const check = async () => {
+    if (done || document.hidden || root.classList.contains('cp-open')) return;
+    const bell = pickBell(day2);
+    if (!bell) return;
+    done = true;
+    removeEventListener('scroll', onScroll);
     const k = await kangaroo;
-    const bell = pickBell();
-    if (!k || !bell) return;
+    if (!k) return;
     const line = await sound.preloadLine(ROO_LINE);
-    k.m.kangarooPeek({ gltf: k.gltf, bell, speak: () => sound.speak(line), ringBell }).catch(() => {});
-  });
+    const music = song.playing && sound.attachSong(song.audio); // so it can be ducked
+    let restore = 0;
+    const unduck = () => {
+      clearTimeout(restore);
+      if (music) sound.duckSong(1, 0.9);
+    };
+    k.m.kangarooPeek({
+      gltf: k.gltf,
+      bell,
+      ringBell,
+      speak: () => {
+        const v = sound.speak(line);
+        if (!v) return null;
+        // the music steps back while he talks (lowered, never muted)
+        if (music) sound.duckSong(0.35, 0.3);
+        restore = setTimeout(unduck, (line?.duration || 5.9) * 1000 + 150);
+        return { ...v, stop: () => { v.stop(); unduck(); } };
+      },
+    }).catch(() => {}).finally(unduck);
+  };
+  const onScroll = () => {
+    clearTimeout(calm);
+    calm = setTimeout(check, 450);
+  };
+  addEventListener('scroll', onScroll, { passive: true });
 }
-/** the reminder bell nearest where they're reading */
-function pickBell() {
+/** a landed reminder bell in Day 2, nearest the middle of the screen */
+function pickBell(scope) {
   const H = innerHeight;
   let best = null;
   let bestD = Infinity;
-  document.querySelectorAll('.remind:not(.is-set)').forEach((b) => {
+  scope.querySelectorAll('.row.is-landed .remind').forEach((b) => {
     const r = b.getBoundingClientRect();
     const y = r.top + r.height / 2;
-    if (!r.width || y < H * 0.18 || y > H * 0.82) return;
-    const d = Math.abs(y - H * 0.42);
+    if (!r.width || y < H * 0.2 || y > H * 0.8) return;
+    const d = Math.abs(y - H * 0.45) + (b.classList.contains('is-set') ? H : 0); // prefer one not yet set
     if (d < bestD) {
       bestD = d;
       best = b;

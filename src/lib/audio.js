@@ -681,6 +681,32 @@ class SoundEngine {
     if (this.tickBus) this.tickBus.gain.setTargetAtTime(v, this.ctx.currentTime, 0.12);
   }
 
+  // ───── the soundtrack through Web Audio, so it can step back for speech
+  // (iOS ignores media-element volume). Connected only when first needed. ─────
+  attachSong(el) {
+    if (this.songGain) return true;
+    if (!el || !this.ctx) return false;
+    try {
+      const src = this.ctx.createMediaElementSource(el);
+      this.songGain = this.ctx.createGain();
+      src.connect(this.songGain);
+      this.songGain.connect(this.ctx.destination); // straight out, exactly as before
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** glide the soundtrack to `level` (1 = as recorded) over about `seconds` */
+  duckSong(level, seconds = 0.4) {
+    const g = this.songGain?.gain;
+    if (!g) return;
+    const t = this.ctx.currentTime;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.setTargetAtTime(level, t, seconds / 3);
+  }
+
   // ───── a spoken line (the kangaroo), with its loudness for lip sync ─────
   preloadLine(url) {
     this.lineBufs ??= {};
