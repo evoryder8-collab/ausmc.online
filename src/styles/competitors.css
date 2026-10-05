@@ -53,24 +53,6 @@ html.cp-open, html.cp-open body { overflow: hidden; }
   transition: opacity 0.35s var(--ease), translate 0.5s var(--ease);
 }
 .cp.is-scrolled .cp__bar-title { opacity: 1; translate: 0 0; }
-.cp__bar-mid { display: flex; align-items: center; gap: 10px; }
-.cp__x {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  font-size: 16px;
-  color: #fff;
-  background: var(--red);
-  opacity: 0;
-  scale: 0.6;
-  pointer-events: none;
-  transition: opacity 0.3s var(--ease), scale 0.45s var(--ease), background 0.2s;
-}
-.cp__x .i { stroke-width: 2.6; }
-.cp__x:active { background: #c30025; }
-.cp.is-scrolled .cp__x { opacity: 1; scale: 1; pointer-events: auto; }
 .cp__bar-count {
   justify-self: end;
   min-width: 42px;

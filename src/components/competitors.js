@@ -100,10 +100,7 @@ function build() {
     <div class="cp__sheet" data-lenis-prevent>
       <header class="cp__bar">
         <button type="button" class="cp__back glass">${icon('back')}<span>Schedule</span></button>
-        <span class="cp__bar-mid">
-          <span class="cp__bar-title" aria-hidden="true">Competitors</span>
-          <button type="button" class="cp__x" aria-label="Close competitors" tabindex="-1">${icon('x')}</button>
-        </span>
+        <span class="cp__bar-title" aria-hidden="true">Competitors</span>
         <span class="cp__bar-count" aria-hidden="true"></span>
       </header>
       <div class="cp__hero">
@@ -250,7 +247,6 @@ function refreshLive() {
 function wire() {
   const { input, clear } = ui;
   root.querySelector('.cp__back').addEventListener('click', () => close());
-  root.querySelector('.cp__x').addEventListener('click', () => { sound.tap(); close(); });
   ui.scrim.addEventListener('click', () => close());
   root.addEventListener('keydown', (e) => e.key === 'Escape' && close());
 
@@ -330,11 +326,7 @@ function wire() {
   // the bar's title appears once the big one has scrolled away
   const title = root.querySelector('.cp__title');
   ui.sheet.addEventListener('scroll', () => {
-    const scrolled = title.getBoundingClientRect().bottom < ui.bar.getBoundingClientRect().bottom;
-    if (scrolled !== root.classList.contains('is-scrolled')) {
-      root.classList.toggle('is-scrolled', scrolled);
-      root.querySelector('.cp__x').tabIndex = scrolled ? 0 : -1;
-    }
+    root.classList.toggle('is-scrolled', title.getBoundingClientRect().bottom < ui.bar.getBoundingClientRect().bottom);
   }, { passive: true });
   document.addEventListener('ausmc:tz', refreshTimes);
   addEventListener('popstate', () => {
