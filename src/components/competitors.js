@@ -105,7 +105,7 @@ function build() {
           ${NATIONS.map(({ code, n }) => `<button type="button" class="cp-nation" data-nation="${code}" aria-pressed="false"><img src="${flagUrl(code)}" alt="" width="22" height="16" decoding="async"><span>${COUNTRIES[code]}</span><b>${n}</b></button>`).join('')}
         </div>
       </div>
-      <div class="cp__controls">
+      <div class="cp__controls"><div class="cp__controls-in">
         <label class="cp__search glass">
           ${icon('search')}
           <input type="search" inputmode="search" enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="Search name, number or country" aria-label="Search competitors">
@@ -121,7 +121,7 @@ function build() {
             <button type="button" role="tab" data-view="people" aria-selected="false">A–Z</button>
           </div>
         </div>
-      </div>
+      </div></div>
       <div class="cp__list" data-view="rounds">
         <div class="cp__rounds">${roundsHtml}</div>
         <div class="cp__az" hidden>${peopleHtml}</div>

@@ -7,6 +7,7 @@ html.cp-open, html.cp-open body { overflow: hidden; }
 .cp__sheet {
   position: absolute;
   inset: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -132,23 +133,21 @@ html.cp-open, html.cp-open body { overflow: hidden; }
 .cp-nation.is-on b { color: #fff; }
 
 /* search + filters (stick under the bar) */
+/* full-width sticky band; the controls themselves sit in the centred column */
 .cp__controls {
   position: sticky;
   top: calc(62px + env(safe-area-inset-top, 0px));
   z-index: 4;
-  max-width: 980px;
-  margin: 8px auto 0;
-  padding: 8px var(--gutter) 10px;
+  margin-top: 8px;
   background: #020c26;
-  box-shadow: 0 0 0 100vmax #020c26; /* full-bleed behind the centred column */
-  clip-path: inset(0 -100vmax);
 }
+.cp__controls-in { max-width: 980px; margin: 0 auto; padding: 8px var(--gutter) 10px; }
 /* a soft edge where the list slides under the sticky controls */
 .cp__controls::after {
   content: '';
   position: absolute;
-  left: -100vmax;
-  right: -100vmax;
+  left: 0;
+  right: 0;
   top: 100%;
   height: 18px;
   background: linear-gradient(#020c26, rgba(2, 12, 38, 0));
@@ -306,7 +305,7 @@ html.cp-open, html.cp-open body { overflow: hidden; }
 .cp-row__btn {
   width: 100%;
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) auto auto;
+  grid-template-columns: 46px minmax(0, 1fr) 30px 53px;
   align-items: center;
   gap: 10px;
   padding: 9px 10px 9px 8px;
@@ -316,6 +315,7 @@ html.cp-open, html.cp-open body { overflow: hidden; }
   transition: background 0.3s var(--ease);
 }
 .cp-row__btn:not([disabled]) { cursor: pointer; }
+.cp-row__btn > .cp-flags { grid-column: 4; }
 .cp-row__btn:not([disabled]):hover, .cp-row__btn[aria-expanded='true'] { background: rgba(255, 255, 255, 0.06); }
 .cp-num {
   justify-self: start;
@@ -329,6 +329,7 @@ html.cp-open, html.cp-open body { overflow: hidden; }
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), inset 2px 0 0 var(--c, transparent);
 }
 .cp-name {
+  grid-column: 2;
   min-width: 0;
   font: 400 17px/1.25 var(--f-elegant);
   letter-spacing: 0.005em;
@@ -336,9 +337,11 @@ html.cp-open, html.cp-open body { overflow: hidden; }
   overflow-wrap: anywhere;
 }
 .cp-name small { display: block; margin-top: 2px; font: 400 12.5px/1.2 var(--f-ui); color: var(--text-3); letter-spacing: 0.02em; }
-.cp-flags { display: inline-flex; gap: 5px; justify-self: end; }
+.cp-flags { display: flex; gap: 5px; width: 53px; } /* two flags wide: a lone flag sits where a pair starts */
 .cp-flags img { width: 24px; height: 18px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22), 0 3px 8px rgba(0, 0, 20, 0.5); }
 .cp-more {
+  grid-column: 3;
+  justify-self: center;
   padding: 5px 7px;
   border-radius: 999px;
   font: 700 11px/1 var(--f-display);
@@ -372,7 +375,7 @@ html.cp-open, html.cp-open body { overflow: hidden; }
 @media (min-width: 900px) { .cp-people { grid-template-columns: 1fr 1fr; } }
 .cp-person {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) auto;
+  grid-template-columns: 46px minmax(0, 1fr) 53px;
   gap: 10px;
   align-items: start;
   padding: 12px 12px 12px 10px;

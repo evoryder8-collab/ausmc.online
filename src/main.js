@@ -292,7 +292,7 @@ async function begin(withSound, btn) {
 // footage. The footage is now trimmed 4s at its end, so the entry point stays
 // on the same moment of the jet pass.
 const SONG_AT_SEC = 2.97;
-const SKIP_AFTER = 6.2; // seconds into the footage before "Skip intro" appears
+const SKIP_AFTER = 5.2; // seconds into the footage before "Skip intro" appears
 const MOBILE = matchMedia('(max-width: 720px)').matches;
 const EARLY_FIREWORKS = 2; // phones: the welcome wave launches 2s before the arrival ends
 const ANNOUNCE_BEFORE_END = 1; // "And the winner is…" one second before the flight lands
@@ -358,7 +358,7 @@ async function playFilm(withSound) {
   tl.call(() => film.play(withSound), null, 0.35);
   // the kangaroo (three.js + model) loads quietly while the footage plays,
   // so it's ready the moment the page appears
-  tl.call(() => setTimeout(prepareKangaroo, 1500), null, 0.35);
+  tl.call(() => setTimeout(prepareKangaroo, 500), null, 0.35);
   tl.fromTo(filmEl, { opacity: 0, scale: 1.14 }, { opacity: 1, scale: 1, duration: 1.4, ease: 'power3.out' }, 0.3);
   tl.fromTo(dest.children, { opacity: 0, y: 24, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.4, stagger: 0.18, ease: 'expo.out' }, 0.35 + 4.4);
   tl.to(dest, { opacity: 0, y: -14, filter: 'blur(8px)', duration: 1.1, ease: 'power2.in' }, 0.35 + 8.2);
