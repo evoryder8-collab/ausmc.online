@@ -828,7 +828,6 @@ const SPEECH = [[0, 0.53], [0.79, 1.73], [2.12, 5.6]]; // when the voice is talk
 export function kangarooPeek({ gltf, bell, speak, ringBell }) {
   return new Promise((resolve) => {
     const W = innerWidth;
-    const H = innerHeight;
     const mobile = W < 720;
     // on phones he's 30% smaller; everywhere he stands at the very bottom of the
     // screen, so where his body leaves the frame is the screen's own edge
@@ -934,15 +933,13 @@ export function kangarooPeek({ gltf, bell, speak, ringBell }) {
     tl.to(P, { lean: 0, duration: 0.3 }, outAt + 0.1);
     tl.to(P, { x: -0.95 * cw, duration: 0.5, ease: 'power2.in' }, outAt + 0.15);
 
-    // tapped the bell (or scrolled well away): wraps up early
-    const y0 = scrollY;
+    // tapped the bell he's pointing at: his job is done, he wraps up early
+    // (scrolling never cuts him off)
     const early = () => {
       if (tl.time() > outAt) return;
       tl.seek(outAt);
     };
-    const onScroll = () => { if (Math.abs(scrollY - y0) > H * 0.6) early(); };
     bell.addEventListener('click', early);
-    addEventListener('scroll', onScroll, { passive: true });
 
     let done = false;
     function finish() {
@@ -950,7 +947,6 @@ export function kangarooPeek({ gltf, bell, speak, ringBell }) {
       done = true;
       gsap.ticker.remove(frame);
       bell.removeEventListener('click', early);
-      removeEventListener('scroll', onScroll);
       voice?.stop();
       K.mixer.stopAllAction();
       renderer.dispose();
