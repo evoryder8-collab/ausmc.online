@@ -211,7 +211,7 @@ export function initSchedule({ lenis, reduced, glass }) {
       gsap.timeline()
         .to(el, { opacity: 0, y: -6, filter: 'blur(4px)', duration: 0.18, ease: 'power2.in' })
         .call(apply)
-        .fromTo(el, { y: 6 }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.5, ease: spring({ bounce: 0.3 }) });
+        .fromTo(el, { y: 6 }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.5, ease: spring({ bounce: 0.3 }), clearProps: 'filter,transform' });
     });
     document.querySelectorAll('[data-shift]').forEach((el) => {
       const label = dayShiftLabel(new Date(+el.dataset.shift));
@@ -294,7 +294,9 @@ function setupLanding({ reduced }) {
       start: 'top 82%',
       once: true,
       onEnter: () => {
-        const tl = gsap.timeline();
+        // once everything has landed, the block and its rows go back to plain,
+        // flat page content (no lingering 3D/GPU layers: big memory on iPhone)
+        const tl = gsap.timeline({ onComplete: () => gsap.set([block, ...head, ...rows, rail].filter(Boolean), { clearProps: 'transform,transformOrigin,willChange' }) });
         tl.to(block, { opacity: 1, duration: 0.4, ease: 'power1.out' }, 0);
         tl.to(block, { y: 0, scale: 1, rotationX: 0, duration: 1.1, ease: spring({ bounce: 0.22 }) }, 0);
         tl.to(head, { opacity: 1, y: 0, duration: 0.8, stagger: 0.05, ease: spring({ bounce: 0.3 }) }, 0.15);
@@ -317,7 +319,7 @@ function setupLanding({ reduced }) {
   document.querySelectorAll('.section-head').forEach((h) => {
     if (reduced) return;
     gsap.fromTo(h.children, { opacity: 0, y: 50, filter: 'blur(10px)' }, {
-      opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.3, stagger: 0.1, ease: 'expo.out',
+      opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.3, stagger: 0.1, ease: 'expo.out', clearProps: 'filter,transform',
       scrollTrigger: { trigger: h, start: 'top 85%', once: true },
     });
   });

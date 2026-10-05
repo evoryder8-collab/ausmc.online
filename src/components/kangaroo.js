@@ -489,6 +489,7 @@ function edgeStage({ gltf, anchor, obstacles = [], onLand, uMax = 26, manual = f
       cleanups.forEach((f) => f());
       mixer.stopAllAction();
       renderer.dispose();
+      renderer.forceContextLoss();
       shadowTex.dispose();
       dotTex.dispose();
       pGeo.dispose();
@@ -949,6 +950,7 @@ export function kangarooPeek({ gltf, bell, speak, ringBell }) {
       voice?.stop();
       K.mixer.stopAllAction();
       renderer.dispose();
+      renderer.forceContextLoss();
       canvas.remove();
       bubble.remove();
       resolve();

@@ -48,7 +48,7 @@ function reel(max) {
       } else {
         gsap.fromTo(strip, { y: -(prev + 1) * h }, { y: -(v + 1) * h, duration: 0.75, ease: spring({ bounce: 0.32 }) });
       }
-      gsap.fromTo(strip, { filter: 'blur(2.5px)' }, { filter: 'blur(0px)', duration: 0.4, ease: 'power2.out' });
+      gsap.fromTo(strip, { filter: 'blur(2.5px)' }, { filter: 'blur(0px)', duration: 0.4, ease: 'power2.out', clearProps: 'filter' });
     },
     refresh() {
       if (cur >= 0) gsap.set(strip, { y: -(cur + 1) * step() });
@@ -57,6 +57,7 @@ function reel(max) {
 }
 
 function buildCountdown(root) {
+  let onScreen = true;
   const cells = root.querySelector('.countdown__cells');
   const label = root.querySelector('.countdown__label');
   const nowEl = root.querySelector('.countdown__now');
@@ -146,7 +147,7 @@ function buildCountdown(root) {
     localBtn.classList.remove('is-busy');
     setTzMode('local');
     applyZone();
-    gsap.fromTo(root.querySelectorAll('.countdown__clock, .countdown__alt, .countdown__label'), { opacity: 0, y: 6, filter: 'blur(4px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7, stagger: 0.06, ease: spring({ bounce: 0.25 }) });
+    gsap.fromTo(root.querySelectorAll('.countdown__clock, .countdown__alt, .countdown__label'), { opacity: 0, y: 6, filter: 'blur(4px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7, stagger: 0.06, ease: spring({ bounce: 0.25 }), clearProps: 'filter,transform' });
   });
   let lastSec = -1;
 
@@ -174,8 +175,9 @@ function buildCountdown(root) {
       vals.s = diff - vals.m * 60;
       for (const k of Object.keys(vals)) {
         const str = String(Math.min(99, vals[k])).padStart(2, '0');
-        reels[k][0].set(+str[0], animate);
-        reels[k][1].set(+str[1], animate);
+        // off screen, the digits still change, just without the roll
+        reels[k][0].set(+str[0], animate && onScreen);
+        reels[k][1].set(+str[1], animate && onScreen);
       }
       if (vals.s !== lastSec && animate) {
         lastSec = vals.s;
@@ -209,9 +211,15 @@ function buildCountdown(root) {
 
   // a hairline "second hand" sweeping continuously in step with the clock
   const sweepTick = () => {
+    if (!onScreen) return; // resumes when the countdown is back in view
     if (sweep && mode === 'pre') sweep.style.transform = `scaleX(${(Date.now() % 1000) / 1000})`;
     requestAnimationFrame(sweepTick);
   };
+  new IntersectionObserver(([e]) => {
+    const was = onScreen;
+    onScreen = e.isIntersecting;
+    if (onScreen && !was) requestAnimationFrame(sweepTick);
+  }, { rootMargin: '40px 0px' }).observe(root);
   requestAnimationFrame(sweepTick);
 
   render(false);
@@ -282,8 +290,8 @@ export function heroEnter({ reduced }) {
     tl.to(['.hero__title-main', '.hero__title-year', ...items], { opacity: 1, y: 0, duration: 0.6, stagger: 0.04 });
     return tl;
   }
-  tl.fromTo('.hero__title-main', { '--w': 62, opacity: 0, y: 40, filter: 'blur(12px) drop-shadow(0px 10px 40px rgba(60,100,255,0))' }, { '--w': 125, opacity: 1, y: 0, filter: 'blur(0px) drop-shadow(0px 10px 40px rgba(60,100,255,0.35))', duration: 1.6, ease: 'expo.out' }, 0.15);
-  tl.fromTo('.hero__title-year', { '--w': 62, opacity: 0, y: 40, filter: 'blur(12px) drop-shadow(0px 10px 32px rgba(228,0,43,0))' }, { '--w': 125, opacity: 1, y: 0, filter: 'blur(0px) drop-shadow(0px 10px 32px rgba(228,0,43,0.32))', duration: 1.6, ease: 'expo.out' }, 0.3);
+  tl.fromTo('.hero__title-main', { '--w': 62, opacity: 0, y: 40, filter: 'blur(12px) drop-shadow(0px 10px 40px rgba(60,100,255,0))' }, { '--w': 125, opacity: 1, y: 0, filter: 'blur(0px) drop-shadow(0px 10px 40px rgba(60,100,255,0.35))', duration: 1.6, ease: 'expo.out', onComplete: () => gsap.set('.hero__title-main', { filter: 'drop-shadow(0px 10px 40px rgba(60,100,255,0.35))' }) }, 0.15);
+  tl.fromTo('.hero__title-year', { '--w': 62, opacity: 0, y: 40, filter: 'blur(12px) drop-shadow(0px 10px 32px rgba(228,0,43,0))' }, { '--w': 125, opacity: 1, y: 0, filter: 'blur(0px) drop-shadow(0px 10px 32px rgba(228,0,43,0.32))', duration: 1.6, ease: 'expo.out', onComplete: () => gsap.set('.hero__title-year', { filter: 'drop-shadow(0px 10px 32px rgba(228,0,43,0.32))' }) }, 0.3);
   tl.fromTo(items, { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 1.1, ease: spring({ bounce: 0.28 }), stagger: 0.07 }, 0.4);
   tl.call(() => {
     document.querySelectorAll('.reel').forEach((r, i) => gsap.fromTo(r, { yPercent: -70, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 1.1, delay: i * 0.05, ease: spring({ bounce: 0.4 }) }));

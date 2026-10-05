@@ -131,7 +131,7 @@ export function initVenue({ lenis, reduced, glass }) {
     });
     panel.querySelector('.btn-here').addEventListener('pointerenter', () => sound.hover());
     if (animate && !reduced) {
-      gsap.fromTo(panel.children, { opacity: 0, y: 18, filter: 'blur(6px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.8, stagger: 0.045, ease: spring({ bounce: 0.25 }) });
+      gsap.fromTo(panel.children, { opacity: 0, y: 18, filter: 'blur(6px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.8, stagger: 0.045, ease: spring({ bounce: 0.25 }), clearProps: 'filter,transform' });
     }
   };
   renderPanel(false);
@@ -178,11 +178,17 @@ export function initVenue({ lenis, reduced, glass }) {
       orbit = null;
     }
   };
+  // the orbit re-renders the whole 3D city every frame: only while it's seen
+  let mapOnScreen = true;
+  new IntersectionObserver(([e]) => {
+    mapOnScreen = e.isIntersecting;
+    if (orbit) mapOnScreen ? orbit.resume() : orbit.pause();
+  }, { rootMargin: '60px 0px' }).observe(mapWrap);
   const startOrbit = () => {
     if (!map || reduced) return;
     stopOrbit();
     const o = { b: map.getBearing() };
-    orbit = gsap.to(o, { b: o.b + 360, duration: 240, ease: 'none', repeat: -1, onUpdate: () => map.setBearing(o.b) });
+    orbit = gsap.to(o, { b: o.b + 360, duration: 240, ease: 'none', repeat: -1, paused: !mapOnScreen, onUpdate: () => map.setBearing(o.b) });
   };
 
   function flyTo(id, first = false) {
