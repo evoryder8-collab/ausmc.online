@@ -292,7 +292,10 @@ async function begin(withSound, btn) {
 // footage. The footage is now trimmed 4s at its end, so the entry point stays
 // on the same moment of the jet pass.
 const SONG_AT_SEC = 2.97;
-const SKIP_AFTER = 5.2; // seconds into the footage before "Skip intro" appears
+const SKIP_AFTER = 5.2; // seconds into the footage before "Skip intro" appears…
+const SKIP_RETURNING = 0.4; // …or almost at once for visitors who've already seen the flyby
+const SEEN_FLYBY = 'ausmc:seen-flyby';
+const seenFlyby = (() => { try { return localStorage.getItem(SEEN_FLYBY) === '1'; } catch { return false; } })();
 const MOBILE = matchMedia('(max-width: 720px)').matches;
 const EARLY_FIREWORKS = 2; // phones: the welcome wave launches 2s before the arrival ends
 const ANNOUNCE_BEFORE_END = 1; // "And the winner is…" one second before the flight lands
@@ -316,6 +319,7 @@ async function playFilm(withSound) {
   // frame-accurate watch of the footage: song entry + skip button
   let songIn = false;
   let skipShown = false;
+  let markedSeen = false;
   let earlyFw = false;
   let announced = false;
   const announce = () => {
@@ -337,7 +341,11 @@ async function playFilm(withSound) {
       fireworks.start({ welcome: !reduced });
     }
     if (d && v.currentTime >= d - ANNOUNCE_BEFORE_END) announce();
-    if (!skipShown && v.currentTime >= SKIP_AFTER) {
+    if (!seenFlyby && !markedSeen && v.currentTime >= SKIP_AFTER) {
+      markedSeen = true; // next visit, they can skip straight away
+      try { localStorage.setItem(SEEN_FLYBY, '1'); } catch { /* private mode */ }
+    }
+    if (!skipShown && v.currentTime >= (seenFlyby ? SKIP_RETURNING : SKIP_AFTER)) {
       skipShown = true;
       skipBtn.classList.add('is-shown');
     }
