@@ -385,6 +385,7 @@ async function revealPage() {
   gsap.set(logo.root, { opacity: 0 });
   slot.appendChild(logo.root);
   revealed = true;
+  prepareKangaroo(); // loads in the background while the page reveals itself
 
   // (normally already playing since 20% into the arrival)
   lyrics.setCinema(false);
@@ -414,6 +415,37 @@ async function revealPage() {
 
   const hash = location.hash && document.querySelector(location.hash);
   if (hash) lenis ? lenis.scrollTo(hash, { offset: -90, duration: 1.8 }) : hash.scrollIntoView({ behavior: 'smooth' });
+  setTimeout(kangarooVisit, 1200);
+}
+
+// ───────────── a kangaroo drops by: once, a moment after the page appears ─────────────
+let kangaroo = null;
+function prepareKangaroo() {
+  if (reduced || kangaroo) return;
+  kangaroo = import('./components/kangaroo.js')
+    .then((m) => m.loadKangaroo(`${import.meta.env.BASE_URL}media/3d/kangaroo.glb`).then((gltf) => ({ m, gltf })))
+    .catch(() => null);
+}
+async function kangarooVisit() {
+  const k = await kangaroo;
+  const countdown = document.querySelector('.countdown');
+  if (!k || !countdown) return;
+  // it performs along the countdown's top edge: wait until that's on screen
+  // (clear of the nav) and the tab is in front
+  await new Promise((res) => {
+    const check = () => {
+      const top = countdown.getBoundingClientRect().top;
+      if (document.hidden || top < 140 || top > innerHeight - 40) return;
+      removeEventListener('scroll', check);
+      document.removeEventListener('visibilitychange', check);
+      res();
+    };
+    addEventListener('scroll', check, { passive: true });
+    document.addEventListener('visibilitychange', check);
+    check();
+  });
+  const manual = import.meta.env.DEV && location.search.includes('roo=manual');
+  k.m.kangarooVisit({ gltf: k.gltf, countdown, obstacles: [...document.querySelectorAll('.hero__title-main, .hero__title-year')], manual }).catch(() => {});
 }
 
 document.fonts?.ready.then(() => ScrollTrigger.refresh());
