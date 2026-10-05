@@ -30,6 +30,7 @@ import { initVenue } from './components/venue.js';
 import { createLyrics } from './components/lyrics.js';
 import { createFilm, createLoop, createSong } from './components/media.js';
 import { Fireworks } from './lib/fireworks.js';
+import { watchReading } from './components/reading.js';
 
 gsap.registerPlugin(ScrollTrigger);
 if (import.meta.env.DEV) window.__ausmc = { gsap, ScrollTrigger };
@@ -179,7 +180,11 @@ ScrollTrigger.create({
   trigger: '.hero',
   start: 'top top',
   end: '75% top',
-  onUpdate: (self) => sound.setFireworksVolume(Math.pow(1 - self.progress, 1.6)),
+  onUpdate: (self) => {
+    const v = Math.pow(1 - self.progress, 1.6);
+    sound.setFireworksVolume(v);
+    sound.setTicksVolume(v); // the clock hushes as you leave it for the schedule
+  },
 });
 
 // scroll-linked atmosphere
@@ -351,6 +356,9 @@ async function playFilm(withSound) {
   tl.to(['.intro__caption', '.intro__rays'], { opacity: 0, y: -24, duration: 0.4, ease: 'power2.in' }, 0);
   tl.to(fx.c, { opacity: 0, duration: 0.3, onComplete: () => { fx.clear(); gsap.set(fx.c, { opacity: 1 }); } }, 0.1);
   tl.call(() => film.play(withSound), null, 0.35);
+  // the kangaroo (three.js + model) loads quietly while the footage plays,
+  // so it's ready the moment the page appears
+  tl.call(() => setTimeout(prepareKangaroo, 1500), null, 0.35);
   tl.fromTo(filmEl, { opacity: 0, scale: 1.14 }, { opacity: 1, scale: 1, duration: 1.4, ease: 'power3.out' }, 0.3);
   tl.fromTo(dest.children, { opacity: 0, y: 24, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.4, stagger: 0.18, ease: 'expo.out' }, 0.35 + 4.4);
   tl.to(dest, { opacity: 0, y: -14, filter: 'blur(8px)', duration: 1.1, ease: 'power2.in' }, 0.35 + 8.2);
@@ -371,10 +379,10 @@ async function playFilm(withSound) {
 }
 
 // ───────────── 3 · Sydney at night: song, fireworks, the page ─────────────
-// eight clock ticks on the countdown's first seconds, fading away — once
+// the countdown ticks on every second once it has appeared (hushed by scrolling away)
 let clockTicks = -1;
 document.addEventListener('ausmc:second', () => {
-  if (clockTicks < 0 || clockTicks >= 8) return;
+  if (clockTicks < 0) return;
   sound.clockTick(clockTicks++);
 });
 
@@ -385,7 +393,7 @@ async function revealPage() {
   gsap.set(logo.root, { opacity: 0 });
   slot.appendChild(logo.root);
   revealed = true;
-  prepareKangaroo(); // loads in the background while the page reveals itself
+  prepareKangaroo(); // (already loading since the footage began, unless it was skipped)
 
   // (normally already playing since 20% into the arrival)
   lyrics.setCinema(false);
@@ -402,6 +410,8 @@ async function revealPage() {
   tl.add(heroEnter({ reduced }), reduced ? 0.2 : 0.6);
   // the seconds reels have dropped in: the next rolls tick in the visitor's ears
   tl.call(() => (clockTicks = 0), null, (reduced ? 0.2 : 0.6) + 1.1);
+  // the footage has faded away and the countdown has settled: in he leaps
+  tl.call(kangarooVisit, null, 1.9);
   tl.to('#nav', { opacity: 1, y: 0, duration: 1.2, ease: spring({ bounce: 0.32 }) }, reduced ? 0.2 : 1.0);
   await tl;
 
@@ -415,7 +425,8 @@ async function revealPage() {
 
   const hash = location.hash && document.querySelector(location.hash);
   if (hash) lenis ? lenis.scrollTo(hash, { offset: -90, duration: 1.8 }) : hash.scrollIntoView({ behavior: 'smooth' });
-  setTimeout(kangarooVisit, 1200);
+  kangarooOnMap();
+  kangarooTip();
 }
 
 // ───────────── a kangaroo drops by: once, a moment after the page appears ─────────────
@@ -446,6 +457,80 @@ async function kangarooVisit() {
   });
   const manual = import.meta.env.DEV && location.search.includes('roo=manual');
   k.m.kangarooVisit({ gltf: k.gltf, countdown, obstacles: [...document.querySelectorAll('.hero__title-main, .hero__title-year')], manual }).catch(() => {});
+}
+
+// he also lives on top of the map frame, from the first time it's on screen
+function kangarooOnMap() {
+  const frame = document.querySelector('.venue__map');
+  if (reduced || !frame) return;
+  const io = new IntersectionObserver(async (entries) => {
+    if (!entries.some((e) => e.intersectionRatio >= 0.55)) return;
+    io.disconnect();
+    const k = await kangaroo;
+    if (!k) return;
+    // let the frame finish springing into place first
+    for (let i = 0; i < 40 && (Math.abs(gsap.getProperty(frame, 'scale') - 1) > 0.002 || Math.abs(gsap.getProperty(frame, 'y')) > 0.5); i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    const manual = import.meta.env.DEV && location.search.includes('roo=map');
+    k.m.kangarooWander({ gltf: k.gltf, anchor: frame, obstacles: [...document.querySelectorAll('.venue .section-head > *')], uMax: 23, manual }).catch(() => {});
+  }, { threshold: [0.55, 0.8] });
+  io.observe(frame);
+}
+
+// …and when someone settles in to read the schedule, he leans in with a tip
+// about the reminder bells (once, and only for visitors who haven't used one)
+const ROO_LINE = `${import.meta.env.BASE_URL}media/sfx/roo-psst.m4a`;
+function kangarooTip() {
+  if (reduced) return;
+  try { if (JSON.parse(localStorage.getItem('ausmc:reminders') || '[]').length) return; } catch { /* private mode */ }
+  sound.preloadLine(ROO_LINE);
+  let stop = null;
+  const found = (e) => { if (e.target.closest('.remind')) disarm(); }; // already found the bells
+  const disarm = () => {
+    stop?.();
+    document.removeEventListener('click', found);
+  };
+  document.addEventListener('click', found);
+  stop = watchReading(async () => {
+    disarm();
+    const k = await kangaroo;
+    const bell = pickBell();
+    if (!k || !bell) return;
+    const line = await sound.preloadLine(ROO_LINE);
+    k.m.kangarooPeek({ gltf: k.gltf, bell, speak: () => sound.speak(line), ringBell }).catch(() => {});
+  });
+}
+/** the reminder bell nearest where they're reading */
+function pickBell() {
+  const H = innerHeight;
+  let best = null;
+  let bestD = Infinity;
+  document.querySelectorAll('.remind:not(.is-set)').forEach((b) => {
+    const r = b.getBoundingClientRect();
+    const y = r.top + r.height / 2;
+    if (!r.width || y < H * 0.18 || y > H * 0.82) return;
+    const d = Math.abs(y - H * 0.42);
+    if (d < bestD) {
+      bestD = d;
+      best = b;
+    }
+  });
+  return best;
+}
+/** a bell hinged at its top: a damped swing and a warm glow */
+function ringBell(bell) {
+  const icon = bell.querySelector(':scope > .i');
+  const p = { t: 0 };
+  sound.softPop({ pitch: 1.25, gain: 0.04 });
+  gsap.to(p, {
+    t: 1.2, duration: 1.2, ease: 'none',
+    onUpdate: () => gsap.set(icon, { rotation: 22 * Math.exp(-3 * p.t) * Math.sin(2 * Math.PI * 4.6 * p.t), transformOrigin: '50% 12%' }),
+    onComplete: () => gsap.set(icon, { clearProps: 'rotation' }),
+  });
+  gsap.timeline({ onComplete: () => gsap.set(bell, { clearProps: 'boxShadow' }) })
+    .fromTo(bell, { boxShadow: 'inset 0 0 0 1px rgba(255,90,120,0), 0 0 0px 0px rgba(255,45,85,0)' }, { boxShadow: 'inset 0 0 0 1px rgba(255,120,145,0.75), 0 0 24px 4px rgba(255,45,85,0.7)', duration: 0.3, ease: 'power2.out' })
+    .to(bell, { boxShadow: 'inset 0 0 0 1px rgba(255,90,120,0), 0 0 0px 0px rgba(255,45,85,0)', duration: 0.9, ease: 'power2.inOut' }, 0.9);
 }
 
 document.fonts?.ready.then(() => ScrollTrigger.refresh());

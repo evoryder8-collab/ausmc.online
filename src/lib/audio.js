@@ -652,24 +652,67 @@ class SoundEngine {
   }
 
   /**
-   * The countdown's opening seconds: four takes of a real clock tick in a
-   * shuffled order, played through twice. Ticks 1–4 sit at half the
-   * recording's level; 5–8 step that half down by a quarter each, and the
-   * eighth is barely there.
+   * The countdown ticking: four takes of a real clock tick in a shuffled
+   * order, round and round, at half the recording's level. The tick bus
+   * fades with the scroll (setTicksVolume), so they hush as you leave.
    */
   clockTick(n) {
-    const LEVELS = [0.5, 0.5, 0.5, 0.5, 0.375, 0.25, 0.125, 0.05];
     const bufs = this.sceneBufs?.ticks;
-    if (!this.live || !bufs?.length || n >= LEVELS.length) return;
+    if (!this.live || !bufs?.length || (this.tickVol ?? 1) < 0.01) return;
     this.tickOrder ??= bufs.map((b, i) => [Math.random(), i]).sort((a, b) => a[0] - b[0]).map(([, i]) => i);
     const { ctx } = this;
+    if (!this.tickBus) {
+      this.tickBus = ctx.createGain();
+      this.tickBus.gain.value = this.tickVol ?? 1;
+      this.tickBus.connect(this.master);
+    }
     const src = ctx.createBufferSource();
     src.buffer = bufs[this.tickOrder[n % bufs.length]];
     const g = ctx.createGain();
-    g.gain.value = LEVELS[n] / 0.9; // straight into the master: exact level (see announce)
+    g.gain.value = 0.5 / 0.9; // straight into the master: exact level (see announce)
+    src.connect(g);
+    g.connect(this.tickBus);
+    src.start(this.now(0.005));
+  }
+
+  /** 0–1: the ticks' share, eased toward smoothly */
+  setTicksVolume(v) {
+    this.tickVol = v;
+    if (this.tickBus) this.tickBus.gain.setTargetAtTime(v, this.ctx.currentTime, 0.12);
+  }
+
+  // ───── a spoken line (the kangaroo), with its loudness for lip sync ─────
+  preloadLine(url) {
+    this.lineBufs ??= {};
+    this.lineBufs[url] ??= this.load(url);
+    return this.lineBufs[url];
+  }
+
+  speak(buf, { gain = 1 } = {}) {
+    if (!this.live || !buf) return null;
+    const { ctx } = this;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = ctx.createGain();
+    g.gain.value = gain / 0.9; // exact level, past the bus compressor
+    const an = ctx.createAnalyser();
+    an.fftSize = 512;
     src.connect(g);
     g.connect(this.master);
-    src.start(this.now(0.005));
+    src.connect(an);
+    const data = new Float32Array(an.fftSize);
+    const t0 = ctx.currentTime + 0.02;
+    src.start(t0);
+    return {
+      elapsed: () => ctx.currentTime - t0,
+      level: () => {
+        an.getFloatTimeDomainData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+        return Math.sqrt(sum / data.length);
+      },
+      stop: () => { try { src.stop(); } catch { /* already done */ } },
+    };
   }
 
   /** a paused context or samples still on their way: try once more when ready */
