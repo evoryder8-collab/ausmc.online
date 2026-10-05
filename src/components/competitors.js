@@ -115,7 +115,7 @@ function build() {
       </div>
       <div class="cp__controls"><div class="cp__controls-in">
         <label class="cp__search glass">
-          <svg class="cp__rim" aria-hidden="true"><rect class="cp__rim-tail" width="100%" height="100%" rx="18" ry="18" pathLength="100"/><rect class="cp__rim-mid" width="100%" height="100%" rx="18" ry="18" pathLength="100"/><rect class="cp__rim-glow" width="100%" height="100%" rx="18" ry="18" pathLength="100"/><rect class="cp__rim-head" width="100%" height="100%" rx="18" ry="18" pathLength="100"/></svg>
+          <canvas class="cp__rim" aria-hidden="true"></canvas>
           ${icon('search')}
           <input type="search" inputmode="search" enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="Search name, number or country" aria-label="Search competitors">
           <button type="button" class="cp__clear" aria-label="Clear search" hidden>×</button>
@@ -346,6 +346,101 @@ const isOpen = () => root && !root.hidden && !root.classList.contains('is-closin
 let liveTimer = null;
 
 /** opens the page, growing it out of `from` (the button in the schedule) */
+// ───────────── the gleam that circles the search bar ─────────────
+// Drawn each frame along the bar's rounded edge in short segments whose
+// width and brightness follow one smooth curve: a fine streak of light,
+// thickest in the middle and fading to nothing at both ends.
+let gleamOn = false;
+function runGleam() {
+  if (reduced || gleamOn) return;
+  const canvas = root.querySelector('.cp__rim');
+  const bar = root.querySelector('.cp__search');
+  const ctx = canvas?.getContext('2d');
+  if (!ctx) return;
+  gleamOn = true;
+  const PAD = 4; // the canvas reaches a little past the edge so the stroke isn't clipped
+  const R = 18; // the bar's corner radius
+  const LAP = 6.5; // seconds per lap
+  let w = 0;
+  let h = 0;
+  let r = R;
+  let P = 0;
+  const size = () => {
+    const dpr = Math.min(devicePixelRatio || 1, 3);
+    w = bar.offsetWidth - 1; // the centre line of the 1px border
+    h = bar.offsetHeight - 1;
+    r = Math.min(R - 0.5, h / 2, w / 2);
+    P = 2 * (w - 2 * r) + 2 * (h - 2 * r) + 2 * Math.PI * r;
+    canvas.width = Math.round((bar.offsetWidth + PAD * 2) * dpr); // exactly its CSS size: no stretch
+    canvas.height = Math.round((bar.offsetHeight + PAD * 2) * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, (PAD + 0.5) * dpr, (PAD + 0.5) * dpr);
+  };
+  /** a point on the rounded edge, `s` px clockwise from the top-left corner's end */
+  const at = (s) => {
+    s = ((s % P) + P) % P;
+    const tw = w - 2 * r;
+    const sh = h - 2 * r;
+    const q = (Math.PI * r) / 2;
+    const arc = (cx, cy, a0, d) => [cx + r * Math.cos(a0 + d / r), cy + r * Math.sin(a0 + d / r)];
+    if (s < tw) return [r + s, 0];
+    s -= tw;
+    if (s < q) return arc(w - r, r, -Math.PI / 2, s);
+    s -= q;
+    if (s < sh) return [w, r + s];
+    s -= sh;
+    if (s < q) return arc(w - r, h - r, 0, s);
+    s -= q;
+    if (s < tw) return [w - r - s, h];
+    s -= tw;
+    if (s < q) return arc(r, h - r, Math.PI / 2, s);
+    s -= q;
+    if (s < sh) return [0, h - r - s];
+    s -= sh;
+    return arc(r, r, Math.PI, s);
+  };
+  const ro = new ResizeObserver(size);
+  ro.observe(bar);
+  size();
+  const N = 40;
+  const t0 = performance.now();
+  /** one continuous line along the edge from s0 to s1, faded along its length */
+  const streak = (s0, s1, width, peak) => {
+    const [ax, ay] = at(s0);
+    const [bx, by] = at(s1);
+    const g = ctx.createLinearGradient(ax, ay, bx, by);
+    for (let i = 0; i <= 10; i++) {
+      const u = i / 10;
+      g.addColorStop(u, `rgba(240,246,255,${(peak * Math.pow(Math.sin(Math.PI * u), 1.6)).toFixed(3)})`);
+    }
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    for (let i = 1; i <= N; i++) {
+      const [x, y] = at(s0 + ((s1 - s0) * i) / N);
+      ctx.lineTo(x, y);
+    }
+    ctx.lineWidth = width;
+    ctx.strokeStyle = g;
+    ctx.stroke();
+  };
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const frame = (now) => {
+    if (root.hidden || root.classList.contains('is-closing')) {
+      gleamOn = false;
+      ro.disconnect();
+      return;
+    }
+    requestAnimationFrame(frame);
+    ctx.clearRect(-PAD - 1, -PAD - 1, w + PAD * 2 + 2, h + PAD * 2 + 2);
+    const len = Math.min(95, P * 0.12);
+    const mid = (((now - t0) / 1000) / LAP) * P;
+    // a hair-thin streak, with a slightly fuller, brighter core in its middle
+    streak(mid - len / 2, mid + len / 2, 0.5, 0.75);
+    streak(mid - len * 0.28, mid + len * 0.28, 1, 0.85);
+  };
+  requestAnimationFrame(frame);
+}
+
 export function openCompetitors({ from, lenis, history: push = true } = {}) {
   if (!root) build();
   if (isOpen()) return;
@@ -358,6 +453,7 @@ export function openCompetitors({ from, lenis, history: push = true } = {}) {
   apply({ animate: false });
   root.hidden = false;
   root.classList.remove('is-closing');
+  requestAnimationFrame(runGleam);
   document.documentElement.classList.add('cp-open');
   lenisRef?.stop();
   ui.sheet.scrollTop = 0;
