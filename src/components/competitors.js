@@ -8,10 +8,10 @@ import { icon } from '../lib/icons.js';
 import { at, timeText, tzState, localZoneLabel, eventEnd } from '../lib/time.js';
 import { flagUrl } from '../lib/worldflags.js';
 import { CATEGORIES, COUNTRIES, ROUNDS, COMPETITORS, NATIONS } from '../data/participants.js';
+import { personWords, matches, tokens } from '../lib/people-search.js';
 import '../styles/competitors.css';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').toLowerCase();
 const pad = (n) => String(n).padStart(3, '0');
 const DAY = { 'day-2': ['Saturday', '10 October', 'Sat'], 'day-3': ['Sunday', '11 October', 'Sun'] };
 const COLORS = { freestyle: '#ff5c7c', remedial: '#7aa2ff', wellness: '#4fd8c6', facial: '#ff9fc6', sports: '#ffb54d', thai: '#e8c46a', student: '#b99dff' };
@@ -25,7 +25,13 @@ const tzLabel = () => (tzState.mode === 'sydney' ? 'AEDT' : localZoneLabel());
 const roundTime = (r) => `${timeText(at(r.date, r.start))} – ${timeText(at(r.date, r.end))}`;
 const roundCount = (r) => r.groups.reduce((n, [, l]) => n + l.length, 0);
 const byNum = new Map(COMPETITORS.map((p) => [p.num, p]));
-const searchText = (p) => fold(`${p.name} ${pad(p.num)} ${p.num} ${p.flags.map((f) => COUNTRIES[f]).join(' ')} ${p.apps.map((a) => CATEGORIES[a.cat]).join(' ')}`);
+// searchable words: a row knows only its own category; a person (A–Z) all of theirs
+const wordCache = new Map();
+const wordsFor = (p, cat) => {
+  const k = `${p.num}:${cat || '*'}`;
+  if (!wordCache.has(k)) wordCache.set(k, personWords(p, cat ? [cat] : p.apps.map((a) => a.cat), CATEGORIES));
+  return wordCache.get(k);
+};
 
 let root = null;
 let ui = null;
@@ -109,6 +115,7 @@ function build() {
       </div>
       <div class="cp__controls"><div class="cp__controls-in">
         <label class="cp__search glass">
+          <svg class="cp__rim" aria-hidden="true"><rect class="cp__rim-tail" width="100%" height="100%" rx="18" ry="18" pathLength="100"/><rect class="cp__rim-mid" width="100%" height="100%" rx="18" ry="18" pathLength="100"/><rect class="cp__rim-glow" width="100%" height="100%" rx="18" ry="18" pathLength="100"/><rect class="cp__rim-head" width="100%" height="100%" rx="18" ry="18" pathLength="100"/></svg>
           ${icon('search')}
           <input type="search" inputmode="search" enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="Search name, number or country" aria-label="Search competitors">
           <button type="button" class="cp__clear" aria-label="Clear search" hidden>×</button>
@@ -156,8 +163,9 @@ function appChip(a) {
 // ───────────── filtering ─────────────
 function apply({ animate = true } = {}) {
   const { q, cat, nation, view } = ui.state;
-  const fq = fold(q.trim());
-  const match = (p, c) => (!cat || c === cat) && (!nation || p.flags.includes(nation)) && (!fq || searchText(p).includes(fq));
+  const toks = tokens(q);
+  const fq = toks.length > 0;
+  const match = (p, c) => (!cat || c === cat) && (!nation || p.flags.includes(nation)) && (!fq || matches(wordsFor(p, c), toks));
   let shown = 0;
   const people = new Set();
   if (view === 'rounds') {
@@ -184,7 +192,7 @@ function apply({ animate = true } = {}) {
   } else {
     ui.az.querySelectorAll('.cp-person').forEach((li) => {
       const p = byNum.get(+li.dataset.num);
-      const ok = p.apps.some((a) => match(p, a.cat));
+      const ok = (!cat || p.apps.some((a) => a.cat === cat)) && (!nation || p.flags.includes(nation)) && (!fq || matches(wordsFor(p), toks));
       li.hidden = !ok;
       if (ok) {
         shown++;
@@ -247,6 +255,13 @@ function wire() {
   root.addEventListener('keydown', (e) => e.key === 'Escape' && close());
 
   let typing;
+  // the keyboard's Search key puts the keyboard away so the results show
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      input.blur();
+    }
+  });
   input.addEventListener('input', () => {
     ui.state.q = input.value;
     clear.hidden = !input.value;

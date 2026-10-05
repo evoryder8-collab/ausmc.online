@@ -181,6 +181,20 @@ html.cp-open, html.cp-open body { overflow: hidden; }
   --blur: 14px;
 }
 .cp__search > .i { font-size: 18px; color: var(--text-3); flex: none; }
+/* a light that travels around the bar's edge, over an even, faint outline */
+.cp__rim { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 3; }
+.cp__rim rect { fill: none; stroke-linecap: round; animation: cp-rim 6.5s linear infinite; }
+/* layered strokes, all ending at the same leading point: a bright head with
+   a soft halo, fading back along a long tail */
+.cp__rim-head { stroke: #fff; stroke-width: 1.5px; stroke-dasharray: 4 96; --from: 0; }
+.cp__rim-glow { stroke: rgba(170, 195, 255, 0.28); stroke-width: 5px; stroke-dasharray: 7 93; --from: 3; }
+.cp__rim-mid { stroke: rgba(215, 228, 255, 0.42); stroke-width: 1.2px; stroke-dasharray: 13 87; --from: 9; }
+.cp__rim-tail { stroke: rgba(205, 220, 255, 0.16); stroke-width: 1.1px; stroke-dasharray: 30 70; --from: 26; }
+@keyframes cp-rim { from { stroke-dashoffset: var(--from); } to { stroke-dashoffset: calc(var(--from) - 100); } }
+@media (prefers-reduced-motion: no-preference) {
+  .cp__search.glass::before { background: rgba(255, 255, 255, 0.16); }
+}
+@media (prefers-reduced-motion: reduce) { .cp__rim { display: none; } }
 .cp__search input {
   flex: 1;
   min-width: 0;
