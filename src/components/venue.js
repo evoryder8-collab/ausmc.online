@@ -4,6 +4,7 @@ import { LOCATIONS } from '../data/schedule.js';
 import { icon } from '../lib/icons.js';
 import { spring } from '../lib/spring.js';
 import { sound } from '../lib/audio.js';
+import { GOOGLE_MAPS, APPLE } from '../lib/brand-maps.js';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -51,10 +52,10 @@ const chooser = (() => {
         <h3 class="maps-sheet__title" id="maps-sheet-title"></h3>
         <p class="maps-sheet__addr"></p>
         <a class="maps-sheet__btn maps-sheet__btn--google" data-app="google" target="_blank" rel="noopener">
-          <span class="maps-sheet__badge maps-sheet__badge--google" aria-hidden="true"></span><span>Open in Google Maps</span>${icon('external')}
+          <span class="maps-sheet__badge maps-sheet__badge--google" aria-hidden="true">${GOOGLE_MAPS}</span><span>Open in Google Maps</span>${icon('external')}
         </a>
         <a class="maps-sheet__btn maps-sheet__btn--apple" data-app="apple" target="_blank" rel="noopener">
-          <span class="maps-sheet__badge maps-sheet__badge--apple" aria-hidden="true"></span><span>Open in Apple Maps</span>${icon('external')}
+          <span class="maps-sheet__badge maps-sheet__badge--apple" aria-hidden="true">${APPLE}</span><span>Open in Apple Maps</span>${icon('external')}
         </a>
         <button type="button" class="maps-sheet__cancel" data-close>Cancel</button>
       </div>`;

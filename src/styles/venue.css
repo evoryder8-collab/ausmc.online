@@ -296,10 +296,12 @@
 .maps-sheet__btn:active { transform: scale(0.97); }
 .maps-sheet__btn--google { color: var(--navy-800); background: linear-gradient(180deg, #ffffff, #e3e9ff); box-shadow: inset 0 1px 0 #fff, 0 10px 26px -10px rgba(120, 160, 255, 0.8); }
 .maps-sheet__btn--apple { color: #fff; background: rgba(255, 255, 255, 0.08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
-.maps-sheet__badge { width: 38px; height: 38px; border-radius: 12px; flex: none; position: relative; }
-.maps-sheet__badge--google { background: conic-gradient(from 200deg, #4285f4 0 25%, #34a853 0 50%, #fbbc05 0 75%, #ea4335 0); box-shadow: inset 0 0 0 9px #fff; }
-.maps-sheet__badge--google::after { content: ''; position: absolute; inset: 13px; border-radius: 50%; background: #fff; }
-.maps-sheet__badge--apple { background: linear-gradient(160deg, #6dd36f, #3aa0ff 55%, #ff5f57); }
-.maps-sheet__badge--apple::after { content: ''; position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -9px 0 0 -6px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25); }
+.maps-sheet__badge { width: 40px; height: 40px; border-radius: 11px; flex: none; display: grid; place-items: center; }
+.maps-sheet__badge svg { display: block; }
+/* app-icon tiles with the real marks */
+.maps-sheet__badge--google { background: #fff; box-shadow: 0 0 0 1px rgba(10, 22, 56, 0.1), 0 4px 10px rgba(0, 10, 40, 0.18); }
+.maps-sheet__badge--google svg { height: 25px; width: auto; }
+.maps-sheet__badge--apple { color: #fff; background: linear-gradient(180deg, #2c2c2e, #000); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), 0 4px 10px rgba(0, 0, 0, 0.35); }
+.maps-sheet__badge--apple svg { height: 21px; width: auto; margin-top: -2px; }
 .maps-sheet__cancel { width: 100%; margin-top: 10px; padding: 12px; border-radius: 16px; font-size: 15px; font-weight: 560; color: var(--text-2); }
 .maps-sheet__cancel:active { background: rgba(255, 255, 255, 0.06); }
