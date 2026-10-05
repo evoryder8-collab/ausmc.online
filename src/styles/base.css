@@ -53,6 +53,9 @@ html {
 html { overflow-x: clip; }
 html.is-locked,
 html.is-locked body { overflow: hidden; }
+/* nothing below the hero can show through the intro, whatever the scroll */
+html.is-locked #main > section:not(.hero),
+html.is-locked .footer { visibility: hidden; }
 
 body {
   margin: 0;

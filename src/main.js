@@ -36,8 +36,13 @@ if (import.meta.env.DEV) window.__ausmc = { gsap, ScrollTrigger };
 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const root = document.documentElement;
-if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+// iOS can restore the old scroll position late, after reloading a tab it had
+// discarded: hold the page at the top for as long as the intro owns the screen
+const pinTop = () => root.classList.contains('is-locked') && (scrollX || scrollY) && scrollTo(0, 0);
 scrollTo(0, 0);
+addEventListener('scroll', pinTop, { passive: true });
+addEventListener('pageshow', pinTop);
+addEventListener('load', pinTop);
 
 // ───────────── atmosphere ─────────────
 const bg = createBackground(document.getElementById('bg'), { reduced });
@@ -402,6 +407,7 @@ async function revealPage() {
   intro.remove();
   film.stop();
   root.classList.remove('is-locked');
+  removeEventListener('scroll', pinTop);
   lenis?.start();
   ScrollTrigger.refresh();
   hero.activate();

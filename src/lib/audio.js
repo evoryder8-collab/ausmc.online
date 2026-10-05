@@ -896,7 +896,7 @@ class SoundEngine {
     this.voiceLoading = this.load(url).then((b) => (this.voiceBuf = b));
   }
 
-  announce({ gain = 0.28 } = {}) { // 0.4, then a further 30% down
+  announce({ gain = 0.168 } = {}) { // 0.4, then a further 30%, then 40% down
     const buf = this.voiceBuf;
     if (!this.live || !buf) return;
     const { ctx } = this;

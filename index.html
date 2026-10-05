@@ -51,6 +51,11 @@
         "url": "https://ausmc.online/"
       }
     </script>
+    <script>
+      // every visit starts at the top, behind the intro: no browser-restored
+      // scroll position (iOS reloads a tab it discarded at its old spot)
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    </script>
   </head>
   <body>
     <!-- Living backdrop -->
