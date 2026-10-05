@@ -61,7 +61,8 @@ function pixelCamera(w, hgt, fov = 22) {
  * The kangaroo itself: a fresh copy of the model, its clips and the layered
  * motion (head, ears, tail, arms, jaw) driven by a plain state object.
  */
-function makeKangaroo(gltf, u) {
+function makeKangaroo(gltf, u, { hold = [] } = {}) {
+  const free = FREE.filter((k) => !hold.includes(k)); // held clips stay on one frame
   const model = cloneSkinned(gltf.scene);
   model.scale.setScalar(u);
   model.traverse((o) => {
@@ -105,7 +106,7 @@ function makeKangaroo(gltf, u) {
 
   /** applies clips + layered motion for this frame */
   const pose = (dt, h) => {
-    for (const k of FREE) S.t[k] += dt;
+    for (const k of free) S.t[k] += dt;
     rest.forEach((q, b) => b.quaternion.copy(q)); // bones the clips don't drive start clean
     let sum = 0;
     for (const k in act) sum += S.w[k] || 0;
@@ -855,7 +856,10 @@ export function kangarooPeek({ gltf, bell, speak, ringBell }) {
 
     // big and close: only the head and shoulders lean into the frame
     const u = ch * 0.62;
-    const K = makeKangaroo(gltf, u);
+    // one calm, upright frame of the clip (its loop swings the body around
+    // the pinned head, which reads as the camera panning); the life comes from
+    // the scripted head turns, ears, jaw and a slow breath instead
+    const K = makeKangaroo(gltf, u, { hold: ['Idle_D'] });
     const { S, B } = K;
     S.w = { Idle_A: 0, Idle_B: 0, Idle_C: 0, Idle_D: 1, Run: 0 };
     S.t.Idle_D = 0.9; // standing tall
@@ -897,6 +901,7 @@ export function kangarooPeek({ gltf, bell, speak, ringBell }) {
       if (voice) open = clamp((voice.level() - 0.012) * 7, 0, 0.42);
       else if (at > 0 && SPEECH.some(([a, b]) => at > a && at < b)) open = 0.12 + 0.12 * Math.sin(at * 26) * Math.sin(at * 9.3);
       S.jaw += (open - S.jaw) * Math.min(1, dt * 30);
+      S.spine = 0.012 * Math.sin(clock * 1.6); // a breath, barely there
       K.pose(dt, u);
       rig.position.set(0, 0, 0);
       rig.rotation.z = -P.lean;
