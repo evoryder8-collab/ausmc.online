@@ -822,7 +822,8 @@ const SPEECH = [[0, 0.53], [0.79, 1.73], [2.12, 5.6]]; // when the voice is talk
 
 /**
  * Leans in from the left edge of the screen with a speech bubble, points out
- * `bell`, and says the line. `speak()` starts the voice and returns a handle
+ * `bell` (an element, or a function that picks one at the moment he points),
+ * and says the line. `speak()` starts the voice and returns a handle
  * with level() for lip sync (or null without sound).
  */
 export function kangarooPeek({ gltf, bell, speak, ringBell }) {
@@ -921,11 +922,16 @@ export function kangarooPeek({ gltf, bell, speak, ringBell }) {
     LINE.forEach(([, when], i) => tl.to(words[i], { opacity: 1, duration: 0.12 }, talkFrom + when));
     // "see that bell?" — turns toward it; the bell rings
     tl.to(S, { yaw: -0.35, cock: -0.1, look: -0.1, duration: 0.35, ease: 'power2.inOut' }, talkFrom + 0.75);
-    tl.call(() => ringBell?.(bell), null, talkFrom + 1.1);
+    let theBell = null;
+    const ring = () => {
+      theBell ??= typeof bell === 'function' ? bell() : bell;
+      if (theBell) ringBell?.(theBell);
+    };
+    tl.call(ring, null, talkFrom + 1.1);
     // "tap it and I'll remind you" — back to you, a nod
     tl.to(S, { yaw: 0.7, cock: 0.22, look: 0, duration: 0.35, ease: 'power2.inOut' }, talkFrom + 2.05);
     tl.to(S, { look: 0.28, duration: 0.16, yoyo: true, repeat: 1, ease: 'sine.inOut' }, talkFrom + 3.0);
-    tl.call(() => ringBell?.(bell), null, talkFrom + 2.2);
+    tl.call(ring, null, talkFrom + 2.2);
     tl.to(S, { ears: 0.2, duration: 0.3 }, talkFrom + 5.2);
     // out
     const outAt = talkFrom + 6.4;
@@ -939,14 +945,15 @@ export function kangarooPeek({ gltf, bell, speak, ringBell }) {
       if (tl.time() > outAt) return;
       tl.seek(outAt);
     };
-    bell.addEventListener('click', early);
+    const onTap = (e) => e.target.closest?.('.remind') && early();
+    document.addEventListener('click', onTap, true);
 
     let done = false;
     function finish() {
       if (done) return;
       done = true;
       gsap.ticker.remove(frame);
-      bell.removeEventListener('click', early);
+      document.removeEventListener('click', onTap, true);
       voice?.stop();
       K.mixer.stopAllAction();
       renderer.dispose();

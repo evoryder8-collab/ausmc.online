@@ -519,20 +519,37 @@ function kangarooOnMap() {
 // …and when someone settles in to read the schedule, he leans in with a tip
 // about the reminder bells (once, and only for visitors who haven't used one)
 const ROO_LINE = `${import.meta.env.BASE_URL}media/sfx/roo-psst.m4a`;
-// (once per visit, the first time Day 2's bells are on screen and the scroll
-// comes to rest)
+// He appears the moment Day 2 comes into view, once per browser. Reloading the
+// page three times in a row (each within 30s) brings him back.
+const ROO_SEEN = 'ausmc:roo-tip-seen';
+const keep = {
+  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } },
+  del: (k) => { try { localStorage.removeItem(k); } catch { /* private mode */ } },
+};
+(() => {
+  const RELOADS = 'ausmc:reloads';
+  if (performance.getEntriesByType?.('navigation')[0]?.type !== 'reload') return keep.del(RELOADS);
+  let r = {};
+  try { r = JSON.parse(keep.get(RELOADS) || '{}'); } catch { /* fresh count */ }
+  const n = r.t && Date.now() - r.t < 30000 ? (r.n || 0) + 1 : 1;
+  if (n >= 3) {
+    keep.del(ROO_SEEN);
+    keep.del(RELOADS);
+  } else keep.set(RELOADS, JSON.stringify({ n, t: Date.now() }));
+})();
+
 function kangarooTip() {
   const day2 = document.getElementById('day-2');
-  if (reduced || !day2) return;
+  if (reduced || !day2 || keep.get(ROO_SEEN)) return;
   sound.preloadLine(ROO_LINE);
-  let calm = 0;
   let done = false;
   const check = async () => {
     if (done || document.hidden || root.classList.contains('cp-open')) return;
-    const bell = pickBell(day2);
-    if (!bell) return;
+    if (day2.getBoundingClientRect().top > innerHeight * 0.8) return; // Day 2 not reached yet
     done = true;
-    removeEventListener('scroll', onScroll);
+    removeEventListener('scroll', check);
+    keep.set(ROO_SEEN, '1');
     const k = await kangaroo;
     if (!k) return;
     const line = await sound.preloadLine(ROO_LINE);
@@ -544,7 +561,7 @@ function kangarooTip() {
     };
     k.m.kangarooPeek({
       gltf: k.gltf,
-      bell,
+      bell: () => pickBell(day2), // whichever bell is in view when he points
       ringBell,
       speak: () => {
         const v = sound.speak(line);
@@ -556,22 +573,19 @@ function kangarooTip() {
       },
     }).catch(() => {}).finally(unduck);
   };
-  const onScroll = () => {
-    clearTimeout(calm);
-    calm = setTimeout(check, 450);
-  };
-  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('scroll', check, { passive: true });
+  check();
 }
-/** a landed reminder bell in Day 2, nearest the middle of the screen */
+/** the bell to point at: one on screen, ideally in Day 2 and above his bubble */
 function pickBell(scope) {
   const H = innerHeight;
   let best = null;
   let bestD = Infinity;
-  scope.querySelectorAll('.row.is-landed .remind').forEach((b) => {
+  document.querySelectorAll('.row.is-landed .remind').forEach((b) => {
     const r = b.getBoundingClientRect();
     const y = r.top + r.height / 2;
-    if (!r.width || y < H * 0.18 || y > H * 0.62) return; // clear of his bubble below
-    const d = Math.abs(y - H * 0.4) + (b.classList.contains('is-set') ? H : 0); // prefer one not yet set
+    if (!r.width || y < H * 0.12 || y > H * 0.78) return;
+    const d = Math.abs(y - H * 0.4) + (y > H * 0.62 ? H * 0.5 : 0) + (scope.contains(b) ? 0 : H * 0.3) + (b.classList.contains('is-set') ? H : 0); // prefer one not yet set
     if (d < bestD) {
       bestD = d;
       best = b;
