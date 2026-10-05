@@ -19,7 +19,7 @@ export function watchReading(onRead, { hold = 4000 } = {}) {
     const now = performance.now();
     const r = schedule.getBoundingClientRect();
     const inside = r.top < innerHeight * 0.3 && r.bottom > innerHeight * 0.7;
-    if (document.hidden || !inside) {
+    if (document.hidden || !inside || document.documentElement.classList.contains('cp-open')) {
       samples.length = 0; // reading starts over somewhere else
       return;
     }

@@ -423,8 +423,12 @@ async function revealPage() {
   ScrollTrigger.refresh();
   hero.activate();
 
-  const hash = location.hash && document.querySelector(location.hash);
-  if (hash) lenis ? lenis.scrollTo(hash, { offset: -90, duration: 1.8 }) : hash.scrollIntoView({ behavior: 'smooth' });
+  if (location.hash === '#competitors') {
+    openCompetitorsPage({ history: false });
+  } else {
+    const hash = location.hash && document.querySelector(location.hash);
+    if (hash) lenis ? lenis.scrollTo(hash, { offset: -90, duration: 1.8 }) : hash.scrollIntoView({ behavior: 'smooth' });
+  }
   kangarooOnMap();
   kangarooTip();
 }
@@ -457,6 +461,33 @@ async function kangarooVisit() {
   });
   const manual = import.meta.env.DEV && location.search.includes('roo=manual');
   k.m.kangarooVisit({ gltf: k.gltf, countdown, obstacles: [...document.querySelectorAll('.hero__title-main, .hero__title-year')], manual }).catch(() => {});
+}
+
+// ───────────── the competitors: their own page, grown out of the schedule's button ─────────────
+const cpEntry = document.querySelector('.cp-entry');
+let competitorsPage = null;
+const loadCompetitors = () => (competitorsPage ??= import('./components/competitors.js'));
+function openCompetitorsPage({ history = true } = {}) {
+  loadCompetitors().then((m) => m.openCompetitors({ from: cpEntry, lenis, history }));
+}
+cpEntry?.addEventListener('click', () => {
+  sound.tap();
+  openCompetitorsPage();
+});
+cpEntry?.addEventListener('pointerenter', loadCompetitors, { once: true }); // warm it up on hover
+addEventListener('hashchange', () => location.hash === '#competitors' && revealed && openCompetitorsPage({ history: false }));
+if (cpEntry) {
+  // the flags on the button, once the browser has a quiet moment
+  (window.requestIdleCallback || ((f) => setTimeout(f, 1500)))(() => {
+    Promise.all([import('./lib/worldflags.js'), import('./data/participants.js')]).then(([{ flagUrl }, d]) => {
+      cpEntry.querySelectorAll('.cp-entry__flags i').forEach((i) => (i.style.backgroundImage = `url("${flagUrl(i.dataset.f)}")`));
+      cpEntry.querySelector('.cp-entry__meta').innerHTML = `<span>${d.COMPETITORS.length} therapists · ${d.NATIONS.length} nations</span><span class="cp-entry__cats"> · ${Object.keys(d.CATEGORIES).length} categories</span>`;
+    });
+  });
+  if (!reduced) {
+    gsap.fromTo(cpEntry, { opacity: 0, y: 26, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 1.1, ease: spring({ bounce: 0.3 }), scrollTrigger: { trigger: cpEntry, start: 'top 92%', once: true } });
+    gsap.fromTo(cpEntry.querySelectorAll('.cp-entry__flags i'), { scale: 0.3, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.7, stagger: 0.07, delay: 0.25, ease: spring({ bounce: 0.45 }), scrollTrigger: { trigger: cpEntry, start: 'top 92%', once: true } });
+  }
 }
 
 // he also lives on top of the map frame, from the first time it's on screen

@@ -2,7 +2,7 @@ import {
   ClipboardCheck, Sparkles, MessageCircleQuestionMark, UtensilsCrossed, Timer, Crown, Vote,
   HandHeart, Trophy, Shirt, PartyPopper, Megaphone, Radio, MapPin, CalendarDays, Navigation,
   Ship, Clapperboard, Coffee, ArrowDown, ArrowUp, ArrowUpRight, Clock, Car, Accessibility,
-  Play, Film, Wine, BellPlus, BellRing, LocateFixed, CalendarPlus,
+  Play, Film, Wine, BellPlus, BellRing, LocateFixed, CalendarPlus, Search, ArrowLeft, Users,
 } from 'lucide-static';
 
 const set = {
@@ -39,6 +39,9 @@ const set = {
   bellring: BellRing,
   locate: LocateFixed,
   calplus: CalendarPlus,
+  search: Search,
+  back: ArrowLeft,
+  users: Users,
 };
 
 const instagram = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor"/></svg>';
