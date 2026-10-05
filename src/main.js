@@ -562,7 +562,12 @@ function kangarooTip() {
     k.m.kangarooPeek({
       gltf: k.gltf,
       bell: () => pickBell(day2), // whichever bell is in view when he points
-      ringBell,
+      // his bell rings and all the others light up with it: the tip reads
+      // without words
+      ringBell: (b) => {
+        if (b) ringBell(b);
+        hintBells(b);
+      },
       speak: () => {
         const v = sound.speak(line);
         if (!v) return null;
@@ -606,6 +611,26 @@ function ringBell(bell) {
   gsap.timeline({ onComplete: () => gsap.set(bell, { clearProps: 'boxShadow' }) })
     .fromTo(bell, { boxShadow: 'inset 0 0 0 1px rgba(255,90,120,0), 0 0 0px 0px rgba(255,45,85,0)' }, { boxShadow: 'inset 0 0 0 1px rgba(255,120,145,0.75), 0 0 24px 4px rgba(255,45,85,0.7)', duration: 0.3, ease: 'power2.out' })
     .to(bell, { boxShadow: 'inset 0 0 0 1px rgba(255,90,120,0), 0 0 0px 0px rgba(255,45,85,0)', duration: 0.9, ease: 'power2.inOut' }, 0.9);
+}
+
+/** every bell on screen answers his: a soft glow and a ripple, travelling down the page */
+function hintBells(except) {
+  const H = innerHeight;
+  const bells = [...document.querySelectorAll('.row.is-landed .remind')]
+    .map((b) => [b, b.getBoundingClientRect()])
+    .filter(([b, r]) => b !== except && r.width && r.bottom > -H * 0.3 && r.top < H * 1.3) // in view (or about to be)
+    .sort((a, b) => a[1].top - b[1].top);
+  const off = 'inset 0 0 0 1px rgba(255,90,120,0), 0 0 0px 0px rgba(255,45,85,0)';
+  bells.forEach(([bell, r]) => {
+    const at = Math.max(0, r.top / H) * 0.45; // a wave from the top of the screen down
+    const ring = document.createElement('span');
+    ring.className = 'remind-ring';
+    bell.appendChild(ring);
+    gsap.timeline({ delay: at, onComplete: () => { ring.remove(); gsap.set(bell, { clearProps: 'boxShadow' }); } })
+      .fromTo(bell, { boxShadow: off }, { boxShadow: 'inset 0 0 0 1px rgba(255,120,145,0.6), 0 0 18px 2px rgba(255,45,85,0.5)', duration: 0.35, ease: 'power2.out' }, 0)
+      .fromTo(ring, { scale: 1, opacity: 0.75 }, { scale: 1.9, opacity: 0, duration: 0.95, ease: 'power2.out' }, 0)
+      .to(bell, { boxShadow: off, duration: 0.8, ease: 'power2.inOut' }, 0.55);
+  });
 }
 
 document.fonts?.ready.then(() => ScrollTrigger.refresh());

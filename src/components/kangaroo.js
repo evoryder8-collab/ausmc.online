@@ -925,7 +925,7 @@ export function kangarooPeek({ gltf, bell, speak, ringBell }) {
     let theBell = null;
     const ring = () => {
       theBell ??= typeof bell === 'function' ? bell() : bell;
-      if (theBell) ringBell?.(theBell);
+      ringBell?.(theBell); // (may be null: then only the others light up)
     };
     tl.call(ring, null, talkFrom + 1.1);
     // "tap it and I'll remind you" — back to you, a nod
