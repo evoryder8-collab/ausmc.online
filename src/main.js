@@ -570,8 +570,8 @@ function pickBell(scope) {
   scope.querySelectorAll('.row.is-landed .remind').forEach((b) => {
     const r = b.getBoundingClientRect();
     const y = r.top + r.height / 2;
-    if (!r.width || y < H * 0.2 || y > H * 0.8) return;
-    const d = Math.abs(y - H * 0.45) + (b.classList.contains('is-set') ? H : 0); // prefer one not yet set
+    if (!r.width || y < H * 0.18 || y > H * 0.62) return; // clear of his bubble below
+    const d = Math.abs(y - H * 0.4) + (b.classList.contains('is-set') ? H : 0); // prefer one not yet set
     if (d < bestD) {
       bestD = d;
       best = b;

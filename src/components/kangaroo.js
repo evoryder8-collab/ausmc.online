@@ -829,16 +829,15 @@ export function kangarooPeek({ gltf, bell, speak, ringBell }) {
     const W = innerWidth;
     const H = innerHeight;
     const mobile = W < 720;
-    const cw = mobile ? 190 : 250;
-    const ch = mobile ? 230 : 290;
-    const b0 = bell.getBoundingClientRect();
-    const atTop = b0.top + b0.height / 2 > H * 0.55; // keep clear of the bell it's pointing at
+    // on phones he's 30% smaller; everywhere he stands at the very bottom of the
+    // screen, so where his body leaves the frame is the screen's own edge
+    const cw = mobile ? 133 : 250;
+    const ch = mobile ? 161 : 290;
     const canvas = document.createElement('canvas');
     canvas.className = 'roo roo--peek';
     canvas.setAttribute('aria-hidden', 'true');
     Object.assign(canvas.style, {
-      position: 'fixed', left: '0', width: `${cw}px`, height: `${ch}px`, pointerEvents: 'none', zIndex: '46',
-      ...(atTop ? { top: `${mobile ? 86 : 96}px` } : { bottom: `${mobile ? 18 : 26}px` }),
+      position: 'fixed', left: '0', bottom: '0', width: `${cw}px`, height: `${ch}px`, pointerEvents: 'none', zIndex: '46',
     });
     document.body.appendChild(canvas);
     let renderer;
@@ -872,7 +871,7 @@ export function kangarooPeek({ gltf, bell, speak, ringBell }) {
 
     // the speech bubble, next to the head; words light up as they're spoken
     const bubble = document.createElement('div');
-    bubble.className = `roo-bubble${atTop ? ' is-top' : ''}`;
+    bubble.className = 'roo-bubble';
     bubble.setAttribute('role', 'status');
     bubble.innerHTML = `<p>${LINE.map(([w]) => `<span>${w}</span>`).join(' ')}</p>`;
     document.body.appendChild(bubble);
@@ -881,7 +880,7 @@ export function kangarooPeek({ gltf, bell, speak, ringBell }) {
     Object.assign(bubble.style, {
       left: `${Math.round(bx)}px`,
       maxWidth: `${Math.round(Math.min(mobile ? 250 : 300, W - bx - 14))}px`,
-      ...(atTop ? { top: `${Math.round((mobile ? 86 : 96) + ch * 0.5 - target.y - 0.32 * u)}px` } : { bottom: `${Math.round((mobile ? 18 : 26) + ch * 0.5 + target.y + 0.1 * u)}px` }),
+      bottom: `${Math.round(ch * 0.5 + target.y + 0.1 * u)}px`,
     });
 
     let voice = null;

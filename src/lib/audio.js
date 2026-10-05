@@ -803,15 +803,16 @@ class SoundEngine {
       this.route(g, { pan, wet: 0.22, bus });
       src.start(t0 + off);
     });
-    if (!cheer) return;
+    if (!cheer || this.cheered) return; // the crowd cheers once per visit
     const applause = (buf, t) => {
+      if (this.cheered) return;
+      this.cheered = true;
       const src = ctx.createBufferSource();
       src.buffer = buf;
       const g = ctx.createGain();
-      // the crowd sits above the soundtrack (song body ≈ -22 dB, applause body
-      // ≈ -13 dB at unity); 0.595 = the earlier 0.85 lowered by 30%
+      // applause body ≈ -13 dB at unity; 0.357 = 0.85, lowered by 30%, then 40%
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(0.595, t + 0.1);
+      g.gain.linearRampToValueAtTime(0.357, t + 0.1);
       src.connect(g);
       this.route(g, { wet: 0.15, bus });
       src.start(t);

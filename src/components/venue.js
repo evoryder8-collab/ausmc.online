@@ -138,7 +138,7 @@ export function initVenue({ lenis, reduced, glass }) {
 
   /** sounds that belong to each location in the map interface */
   const sceneFor = (id) => {
-    if (id === 'dinner') sound.toast(); // glasses together
+    if (id === 'dinner') sound.toast({ cheer: true }); // glasses together (+ the crowd, the first time)
     else sound.bowl(); // the Championship: a Tibetan bowl (the dinner fades out)
   };
 
