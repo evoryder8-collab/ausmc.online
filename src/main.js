@@ -473,7 +473,7 @@ function kangarooOnMap() {
       await new Promise((r) => setTimeout(r, 100));
     }
     const manual = import.meta.env.DEV && location.search.includes('roo=map');
-    k.m.kangarooWander({ gltf: k.gltf, anchor: frame, obstacles: [...document.querySelectorAll('.venue .section-head > *')], uMax: 23, manual }).catch(() => {});
+    k.m.kangarooWander({ gltf: k.gltf, anchor: frame, obstacles: [...document.querySelectorAll('.venue .section-head > *')], uMax: 29, manual }).catch(() => {}); // 30% bigger than on the countdown
   }, { threshold: [0.55, 0.8] });
   io.observe(frame);
 }

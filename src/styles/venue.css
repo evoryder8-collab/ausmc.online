@@ -1,7 +1,7 @@
 .venue { position: relative; padding: clamp(80px, 11vw, 150px) 0 20px; }
 .venue__grid {
   max-width: 1180px;
-  margin: clamp(62px, 6vw, 76px) auto 0; /* headroom for the kangaroo on the frame */
+  margin: clamp(82px, 7vw, 96px) auto 0; /* headroom for the kangaroo on the frame */
   padding: 0 var(--gutter);
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);

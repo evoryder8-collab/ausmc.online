@@ -653,9 +653,10 @@ export function kangarooWander(opts) {
     const { S, h, L, R, radius, fitRise, fade, bound, hop } = k;
     const lo = L + radius + 0.6 * h;
     const hi = R - radius - 0.6 * h;
+    // he stands above the location button that's chosen (Championship / Dinner Party)
     const pinX = () => {
-      const m = document.querySelector('.venue .marker.is-active');
-      const r = m?.getBoundingClientRect();
+      const b = document.querySelector('.map__switch [data-loc][aria-selected="true"]');
+      const r = b?.getBoundingClientRect();
       return r?.width ? clamp(r.left + r.width / 2, lo, hi) : null;
     };
     // beats are planned ahead: track where it will be and which way it faces
@@ -784,10 +785,10 @@ export function kangarooWander(opts) {
     tl.to({}, { duration: 0.001 }, t);
     tl.eventCallback('onComplete', goToPin);
 
-    // a new location: it watches the map fly, then hops over to the new pin
+    // a new choice: he hops straight over to stand above that button
     const onSwitch = () => {
       pending?.kill();
-      pending = gsap.delayedCall(1.4, () => {
+      pending = gsap.delayedCall(0.25, () => {
         pending = null;
         goToPin();
       });
