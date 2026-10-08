@@ -15,7 +15,7 @@ export const CATEGORIES = {
 export const COUNTRIES = {
   au: 'Australia', nz: 'New Zealand', us: 'United States', cn: 'China', jp: 'Japan', vn: 'Vietnam',
   tw: 'Taiwan', my: 'Malaysia', th: 'Thailand', ph: 'Philippines', fr: 'France', hu: 'Hungary',
-  fj: 'Fiji', sg: 'Singapore',
+  fj: 'Fiji', sg: 'Singapore', de: 'Germany',
 };
 
 export const ROUNDS = [
@@ -34,6 +34,7 @@ export const ROUNDS = [
         [20, 'Yuriko Shirosaki', ['jp', 'tw']],
         [26, 'Enriqueta Amante', ['au', 'ph']],
         [73, 'Chi Fei Chiu', ['tw']],
+        [78, 'Alexandros Talantopoulos', ['de']],
       ]],
       ['remedial', [
         [12, 'Yi Hsuan Hung', ['tw']],
@@ -61,6 +62,7 @@ export const ROUNDS = [
         [47, 'Yi-Min Yang', ['au', 'tw']],
         [56, 'Amanda Fisher', ['au']],
         [62, 'Ben Vaughan', ['au']],
+        [78, 'Alexandros Talantopoulos', ['de']],
       ]],
       ['wellness', [
         [44, 'Ronil Linnit', ['au', 'my']],
@@ -81,7 +83,7 @@ export const ROUNDS = [
         [31, 'Thanh Ha Tran', ['au']],
         [37, 'Hang Bui', ['au']],
         [54, 'Ting An Wei', ['tw']],
-        [77, 'Primmy Tran', ['sg', 'vn']],
+        [77, 'Primmy Tran', ['sg']],
       ]],
     ],
   },
@@ -94,6 +96,7 @@ export const ROUNDS = [
         [62, 'Ben Vaughan', ['au']],
         [19, 'Peter Duggan', ['au']],
         [70, 'Nana Tonseenon', ['au', 'th']],
+        [68, 'Samruay Sathupak', ['au', 'th']],
       ]],
       ['remedial', [
         [14, 'Narumol Charudet', ['au']],
@@ -105,10 +108,12 @@ export const ROUNDS = [
         [64, 'Duy Nguyen', ['au', 'vn']],
       ]],
       ['sports', [
+        [44, 'Ronil Linnit', ['au']],
         [45, 'Chun Ni', ['cn', 'us']],
         [58, 'Masakazu Ashida', ['jp', 'au']],
         [36, 'Shuang Zhang', ['nz', 'cn']],
         [73, 'Chi Fei Chiu', ['tw']],
+        [78, 'Alexandros Talantopoulos', ['de']],
       ]],
       ['thai', [
         [61, 'Phattraporn Wichatham', ['au', 'th']],
@@ -127,6 +132,7 @@ export const ROUNDS = [
         [14, 'Narumol Charudet', ['au', 'th']],
         [23, 'Jude Borromeo', ['au', 'ph']],
         [30, 'Zoltán Kódor', ['hu']],
+        [65, 'Olive Emily Daysey Kumar', ['au', 'fj']],
       ]],
       ['freestyle', [
         [44, 'Ronil Linnit', ['au', 'my']],
@@ -168,6 +174,7 @@ export const ROUNDS = [
         [44, 'Ronil Linnit', ['au', 'my']],
         [66, 'Danunat Rungruengboriboon', ['au', 'th']],
         [73, 'Chi Fei Chiu', ['tw']],
+        [78, 'Alexandros Talantopoulos', ['de']],
       ]],
       ['wellness', [
         [54, 'Ting An Wei', ['tw']],
@@ -185,7 +192,7 @@ export const ROUNDS = [
         [53, 'Nu Hoang Thuc Tran', ['au', 'vn']],
         [60, 'Angkhana Uparawanna', ['au', 'th']],
         [74, 'Prapaporn Phawandee', ['au', 'th']],
-        [75, 'Bima Anugrah', ['au', 'th']],
+        [75, 'Bella Anugrah', ['au', 'th']],
       ]],
     ],
   },

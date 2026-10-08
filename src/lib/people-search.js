@@ -17,6 +17,7 @@ const ALIASES = {
   hu: 'hungary hungarian',
   fj: 'fiji fijian',
   sg: 'singapore singaporean',
+  de: 'germany german deutschland',
 };
 
 /** lower-case, accents off, any punctuation becomes a space */

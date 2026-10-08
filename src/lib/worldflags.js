@@ -13,6 +13,7 @@ import fr from 'flag-icons/flags/4x3/fr.svg?url';
 import hu from 'flag-icons/flags/4x3/hu.svg?url';
 import fj from 'flag-icons/flags/4x3/fj.svg?url';
 import sg from 'flag-icons/flags/4x3/sg.svg?url';
+import de from 'flag-icons/flags/4x3/de.svg?url';
 
-const URLS = { au, nz, us, cn, jp, vn, tw, my, th, ph, fr, hu, fj, sg };
+const URLS = { au, nz, us, cn, jp, vn, tw, my, th, ph, fr, hu, fj, sg, de };
 export const flagUrl = (code) => URLS[code] || '';
